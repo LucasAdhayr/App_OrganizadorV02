@@ -6,7 +6,7 @@ Atualizado em 2026-10-12. Onde este documento diverge da especificação origina
 - Android, Poco X3 (MIUI, Android 12). APK para uso pessoal.
 - Flutter + Drift (SQLite) + Riverpod.
 - Computador de desenvolvimento: Windows, com Git, conta no GitHub e VS Code.
-- Repositório: https://github.com/lucastoledoeng-web/organizador-pessoal
+- Repositório: https://github.com/LucasAdhayr/App_OrganizadorV02.git
 
 ## Escopo: 100% offline
 - Sem internet, sem Google Drive, sem login, sem IA, sem voz.
