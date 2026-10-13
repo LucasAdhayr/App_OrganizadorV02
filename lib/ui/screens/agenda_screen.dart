@@ -1,0 +1,75 @@
+import 'package:flutter/material.dart';
+
+import '../../app/app_state.dart';
+import '../../core/dates.dart';
+import '../../core/models.dart';
+import '../task_tile.dart';
+import '../term_widgets.dart';
+
+/// Tudo o que tem data, agrupado por dia. Recorrentes aparecem na próxima
+/// ocorrência.
+class AgendaScreen extends StatelessWidget {
+  const AgendaScreen({super.key});
+
+  static int _compare(Task a, Task b) {
+    final byDay = dateOnly(a.due!).compareTo(dateOnly(b.due!));
+    if (byDay != 0) return byDay;
+    final ma = a.time == null ? 1440 : a.time!.hour * 60 + a.time!.minute;
+    final mb = b.time == null ? 1440 : b.time!.hour * 60 + b.time!.minute;
+    final byTime = ma.compareTo(mb);
+    if (byTime != 0) return byTime;
+    return a.title.compareTo(b.title);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppScope.of(context);
+    final p = s.palette;
+    final today = dateOnly(s.now);
+
+    final items = s.tasks.where((t) => s.isActive(t) && t.due != null).toList()
+      ..sort(_compare);
+
+    final groups = <String, List<Task>>{};
+    for (final t in items) {
+      final d = dateOnly(t.due!);
+      final diff = daysBetween(today, d);
+      final key = diff < 0
+          ? 'ATRASADAS'
+          : diff == 0
+              ? 'HOJE'
+              : diff == 1
+                  ? 'AMANHÃ'
+                  : fmtDateShort(d);
+      groups.putIfAbsent(key, () => <Task>[]).add(t);
+    }
+
+    if (groups.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 48),
+        child: Column(
+          children: [
+            const WireGlobe(size: 132),
+            const SizedBox(height: 20),
+            Text('> Nada com data marcada.', style: TextStyle(color: p.fg, fontSize: 15)),
+            const SizedBox(height: 6),
+            Text(
+              'Tarefas com prazo ou repetição aparecem aqui.',
+              style: TextStyle(color: p.dim, fontSize: 13),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
+      children: [
+        for (final entry in groups.entries) ...[
+          SectionHeader(entry.key, count: entry.value.length),
+          for (final t in entry.value) TaskTile(key: ValueKey('agenda-${t.id}'), task: t),
+        ],
+      ],
+    );
+  }
+}
