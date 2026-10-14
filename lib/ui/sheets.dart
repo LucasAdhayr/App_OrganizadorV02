@@ -320,20 +320,28 @@ class _TaskDetail extends StatelessWidget {
         if (t.notes.isNotEmpty) info('NOTAS', t.notes),
         gap(12),
         if (active) ...[
-          TermButton(
-            label: 'Concluir',
-            icon: Icons.check,
-            expand: true,
-            primary: true,
-            onPressed: () => closeThen(() => completeTask(host, t)),
-          ),
-          gap(),
+          if (s.canComplete(t)) ...[
+            TermButton(
+              label: 'Concluir',
+              icon: Icons.check,
+              expand: true,
+              primary: true,
+              onPressed: () => closeThen(() => completeTask(host, t)),
+            ),
+            gap(),
+          ] else ...[
+            Text(
+              'Só dá para concluir a partir de ${fmtDateShort(t.due!)}.',
+              style: TextStyle(color: p.dim, fontSize: 13),
+            ),
+            gap(),
+          ],
           TermButton(
             label: 'Adiar',
             expand: true,
             onPressed: () => closeThen(() => snoozeTask(host, t)),
           ),
-          if (t.kind == TaskKind.recurring) ...[
+          if (t.kind == TaskKind.recurring && s.canComplete(t)) ...[
             gap(),
             TermButton(
               label: 'Pular só esta vez',

@@ -59,7 +59,10 @@ class _TaskTileState extends State<TaskTile> {
         textColor: p.bg,
       ),
       confirmDismiss: (direction) async {
-        if (direction == DismissDirection.startToEnd) return true;
+        if (direction == DismissDirection.startToEnd) {
+          // Recorrente ainda não vencida: o cartão volta e aparece um aviso.
+          return ensureCanComplete(context, t);
+        }
         final until = await showSnoozeSheet(context);
         if (until == null) return false;
         _pendingSnooze = until;

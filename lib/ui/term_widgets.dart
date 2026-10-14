@@ -278,7 +278,7 @@ class _TermRowState extends State<TermRow> {
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
         child: Row(
           children: [
-            if (widget.leading != null) widget.leading!,
+            ?widget.leading,
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

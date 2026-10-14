@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../core/dates.dart';
+import '../core/ids.dart';
 import '../core/models.dart';
+import '../data/store.dart';
 import 'palette.dart';
 
 /// Acesso ao estado a partir de qualquer widget.
@@ -48,16 +50,27 @@ class _Undo {
   final int historyLength;
 }
 
-/// Estado em memória do protótipo (Etapa 1). Na Etapa 2 os dados passam
-/// para o banco local e esta classe vira a camada de regras.
+/// Regras do app. Os dados vivem em memória (rápido para a interface) e cada
+/// alteração é gravada na hora no [AppStore] (banco local). Ao abrir o app,
+/// [load] traz tudo de volta. Sem [AppStore] (testes), só existe a memória.
 class AppState extends ChangeNotifier {
-  AppState({DateTime Function()? clock, bool seed = true})
-      : clock = clock ?? DateTime.now {
+  AppState({DateTime Function()? clock, bool seed = false, AppStore? store})
+      : clock = clock ?? DateTime.now,
+        _store = store {
     if (seed) _seed();
   }
 
   /// Relógio injetável, para testes.
   final DateTime Function() clock;
+
+  AppStore? _store;
+
+  /// Liga o banco depois da criação (usado pelo main, que abre o banco antes).
+  void attachStore(AppStore store) => _store = store;
+
+  /// Mensagem de erro de armazenamento (banco indisponível, falha ao gravar).
+  /// A interface mostra um aviso enquanto ela existir.
+  String? storageError;
 
   final List<Task> tasks = [];
   final List<HistoryEvent> history = [];
@@ -67,14 +80,61 @@ class AppState extends ChangeNotifier {
   EffectLevel effects = EffectLevel.soft;
   int reviewAfterDays = 14;
 
-  int _seq = 0;
   _Undo? _undo;
 
   DateTime get now => clock();
 
-  String newId(String prefix) => '$prefix${++_seq}';
+  /// Identificador único (UUID) com um prefixo legível: "t-...", "h-...".
+  String newId(String prefix) => '$prefix-${newUuid()}';
 
   void tick() => notifyListeners();
+
+  // -------------------------------------------------------------- persistência
+
+  /// Lê tudo do banco. Chamado uma vez, ao abrir o app.
+  Future<void> load() async {
+    final store = _store;
+    if (store == null) return;
+    final snap = await store.load();
+    tasks
+      ..clear()
+      ..addAll(snap.tasks);
+    history
+      ..clear()
+      ..addAll(snap.history);
+    notes
+      ..clear()
+      ..addAll(snap.notes);
+
+    final paletteId = snap.settings['palette'];
+    palette = AppPalette.all.firstWhere(
+      (p) => p.id == paletteId,
+      orElse: () => AppPalette.green,
+    );
+    final fx = snap.settings['effects'];
+    effects = EffectLevel.values.firstWhere(
+      (e) => e.name == fx,
+      orElse: () => EffectLevel.soft,
+    );
+    reviewAfterDays =
+        (int.tryParse(snap.settings['reviewAfterDays'] ?? '') ?? 14).clamp(3, 90);
+    notifyListeners();
+  }
+
+  /// Grava em segundo plano, na ordem das chamadas. Se falhar, guarda o erro
+  /// para a interface avisar em vez de perder dados em silêncio.
+  void _save(Future<void> Function(AppStore store) op) {
+    final store = _store;
+    if (store == null) return;
+    op(store).catchError((Object e) {
+      storageError = 'Não foi possível salvar os dados: $e';
+      notifyListeners();
+    });
+  }
+
+  void _saveTask(Task t) => _save((s) => s.upsertTask(t));
+
+  void _saveNote(Note n) => _save((s) => s.upsertNote(n));
 
   // ---------------------------------------------------------------- consultas
 
@@ -177,14 +237,16 @@ class AppState extends ChangeNotifier {
   void _remember(Task t) => _undo = _Undo(t, t.copy(), history.length);
 
   void _log(HistoryKind kind, Task t, {String detail = ''}) {
-    history.add(HistoryEvent(
+    final event = HistoryEvent(
       id: newId('h'),
       at: now,
       kind: kind,
       taskId: t.id,
       taskTitle: t.title,
       detail: detail,
-    ));
+    );
+    history.add(event);
+    _save((s) => s.addHistory(event));
   }
 
   /// Desfaz a última ação rápida (concluir, adiar, descartar...).
@@ -193,16 +255,29 @@ class AppState extends ChangeNotifier {
     if (u == null) return;
     u.task.restoreFrom(u.before);
     if (history.length > u.historyLength) {
+      final removed = history.sublist(u.historyLength).map((e) => e.id).toList();
       history.removeRange(u.historyLength, history.length);
+      _save((s) => s.deleteHistory(removed));
     }
+    _saveTask(u.task);
     _undo = null;
     notifyListeners();
   }
 
-  void complete(Task t) {
+  /// Tarefa recorrente só pode ser concluída (ou pulada) a partir do dia da
+  /// sua ocorrência. Sem isso, dava para clicar "concluir" sem parar e ela
+  /// andava semanas para a frente. Única e reutilizável não têm essa trava.
+  bool canComplete(Task t) {
+    if (t.kind != TaskKind.recurring) return true;
+    final due = t.due;
+    return due == null || !dateOnly(due).isAfter(dateOnly(now));
+  }
+
+  /// Conclui a tarefa. Devolve false (sem mudar nada) se ainda não puder.
+  bool complete(Task t) {
+    if (!canComplete(t)) return false;
     _remember(t);
     final n = now;
-    final today = dateOnly(n);
     t.lastDoneAt = n;
     t.updatedAt = n;
     t.snoozedUntil = null;
@@ -213,10 +288,7 @@ class AppState extends ChangeNotifier {
           // as perdidas, e as perdidas não contaminam as futuras.
           final rule =
               t.recurrence ?? const Recurrence(type: RecurrenceType.daily);
-          final due = t.due;
-          final base =
-              (due != null && due.isAfter(today)) ? dateOnly(due) : today;
-          t.due = rule.nextAfter(base);
+          t.due = rule.nextAfter(dateOnly(n));
           t.status = TaskStatus.pending;
         }
       case TaskKind.single:
@@ -224,7 +296,9 @@ class AppState extends ChangeNotifier {
         t.status = TaskStatus.done;
     }
     _log(HistoryKind.done, t);
+    _saveTask(t);
     notifyListeners();
+    return true;
   }
 
   void snooze(Task t, DateTime until) {
@@ -233,6 +307,7 @@ class AppState extends ChangeNotifier {
     t.snoozedUntil = until;
     t.updatedAt = now;
     _log(HistoryKind.snoozed, t, detail: 'até ${fmtWhen(until, now)}');
+    _saveTask(t);
     notifyListeners();
   }
 
@@ -242,23 +317,24 @@ class AppState extends ChangeNotifier {
     t.snoozedUntil = null;
     t.updatedAt = now;
     _log(HistoryKind.discarded, t);
+    _saveTask(t);
     notifyListeners();
   }
 
-  /// Pula só a ocorrência atual de uma tarefa recorrente.
-  void skip(Task t) {
+  /// Pula só a ocorrência atual de uma tarefa recorrente. Devolve false (sem
+  /// mudar nada) se a tarefa não repete ou se a ocorrência ainda não chegou.
+  bool skip(Task t) {
     final rule = t.recurrence;
-    if (rule == null) return;
+    if (rule == null || !canComplete(t)) return false;
     _remember(t);
-    final today = dateOnly(now);
-    final due = t.due;
-    final base = (due != null && due.isAfter(today)) ? dateOnly(due) : today;
-    t.due = rule.nextAfter(base);
+    t.due = rule.nextAfter(dateOnly(now));
     t.status = TaskStatus.pending;
     t.snoozedUntil = null;
     t.updatedAt = now;
     _log(HistoryKind.skipped, t);
+    _saveTask(t);
     notifyListeners();
+    return true;
   }
 
   /// "Preciso de novo" (reutilizável) ou reabrir qualquer tarefa encerrada.
@@ -268,6 +344,7 @@ class AppState extends ChangeNotifier {
     t.snoozedUntil = null;
     t.updatedAt = now;
     _log(HistoryKind.reopened, t);
+    _saveTask(t);
     notifyListeners();
   }
 
@@ -278,6 +355,7 @@ class AppState extends ChangeNotifier {
     t.snoozedUntil = null;
     if (t.status == TaskStatus.snoozed) t.status = TaskStatus.pending;
     _log(HistoryKind.kept, t);
+    _saveTask(t);
     notifyListeners();
   }
 
@@ -289,6 +367,7 @@ class AppState extends ChangeNotifier {
       t.updatedAt = now;
       _log(HistoryKind.edited, t);
     }
+    _saveTask(t);
     _undo = null;
     notifyListeners();
   }
@@ -298,29 +377,36 @@ class AppState extends ChangeNotifier {
   Note addNote(String text, {bool idea = false}) {
     final n = Note(id: newId('n'), text: text, createdAt: now, isIdea: idea);
     notes.add(n);
+    _saveNote(n);
     notifyListeners();
     return n;
   }
 
   void toggleIdea(Note n) {
     n.isIdea = !n.isIdea;
+    _saveNote(n);
     notifyListeners();
   }
 
   void markConverted(Note n) {
     n.converted = true;
+    _saveNote(n);
     notifyListeners();
   }
 
+  /// Remove a nota da lista (no banco é remoção lógica) e devolve a posição,
+  /// para o "desfazer" colocá-la de volta no mesmo lugar.
   int removeNote(Note n) {
     final i = notes.indexOf(n);
     if (i >= 0) notes.removeAt(i);
+    _save((s) => s.deleteNote(n.id));
     notifyListeners();
     return i;
   }
 
   void insertNote(int index, Note n) {
     notes.insert(index.clamp(0, notes.length), n);
+    _saveNote(n);
     notifyListeners();
   }
 
@@ -328,20 +414,40 @@ class AppState extends ChangeNotifier {
 
   void setEffects(EffectLevel level) {
     effects = level;
+    _save((s) => s.setSetting('effects', level.name));
     notifyListeners();
   }
 
   void setPalette(AppPalette p) {
     palette = p;
+    _save((s) => s.setSetting('palette', p.id));
     notifyListeners();
   }
 
   void setReviewAfterDays(int days) {
     reviewAfterDays = days.clamp(3, 90);
+    _save((s) => s.setSetting('reviewAfterDays', '$reviewAfterDays'));
     notifyListeners();
   }
 
   // --------------------------------------------------------- dados de exemplo
+
+  /// Carrega os dados de exemplo (só com o app vazio) e grava no banco.
+  void loadSampleData() {
+    if (tasks.isNotEmpty || notes.isNotEmpty) return;
+    _seed();
+    for (final t in tasks) {
+      _saveTask(t);
+    }
+    for (final e in history) {
+      _save((s) => s.addHistory(e));
+    }
+    for (final n in notes) {
+      _saveNote(n);
+    }
+    notifyListeners();
+  }
+
 
   void _seed() {
     final n = now;

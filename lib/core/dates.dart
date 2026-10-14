@@ -20,16 +20,21 @@ String fmtTime(TimeOfDay t) => '${two(t.hour)}:${two(t.minute)}';
 /// weekday: 1 = segunda ... 7 = domingo (padrão do DateTime.weekday).
 String weekdayShort(int weekday) => _weekdays[weekday - 1];
 
-String fmtDateShort(DateTime d) =>
-    '${weekdayShort(d.weekday)} ${two(d.day)}/${two(d.month)}';
+/// "SEG 05/02". O ano só aparece quando não é o ano atual ("SEG 05/02/2027"),
+/// para uma data distante nunca ser confundida com uma próxima.
+String fmtDateShort(DateTime d) {
+  final year = d.year == DateTime.now().year ? '' : '/${d.year}';
+  return '${weekdayShort(d.weekday)} ${two(d.day)}/${two(d.month)}$year';
+}
 
 String fmtDateFull(DateTime d) => '${two(d.day)}/${two(d.month)}/${d.year}';
 
-/// "hoje 20:00", "amanhã 09:00" ou "15/10 09:00".
+/// "hoje 20:00", "amanhã 09:00", "15/10 09:00" ou "05/02/2027 09:00".
 String fmtWhen(DateTime when, DateTime now) {
   final diff = daysBetween(now, when);
   final hm = '${two(when.hour)}:${two(when.minute)}';
   if (diff == 0) return 'hoje $hm';
   if (diff == 1) return 'amanhã $hm';
-  return '${two(when.day)}/${two(when.month)} $hm';
+  final year = when.year == now.year ? '' : '/${when.year}';
+  return '${two(when.day)}/${two(when.month)}$year $hm';
 }

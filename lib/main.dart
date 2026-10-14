@@ -5,24 +5,36 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'app/app_state.dart';
 import 'app/palette.dart';
 import 'app/theme.dart';
+import 'data/sqlite_store.dart';
 import 'ui/home_shell.dart';
 import 'ui/term_widgets.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp]);
-  runApp(const OrganizadorApp());
+  final state = AppState();
+  try {
+    final store = await SqliteStore.open();
+    state.attachStore(store);
+    await state.load();
+  } catch (e) {
+    // Sem banco o app ainda abre, mas avisa que nada será salvo.
+    state.storageError = 'Banco de dados indisponível: $e';
+  }
+  runApp(OrganizadorApp(state: state));
 }
 
 class OrganizadorApp extends StatefulWidget {
-  const OrganizadorApp({super.key});
+  const OrganizadorApp({super.key, required this.state});
+
+  final AppState state;
 
   @override
   State<OrganizadorApp> createState() => _OrganizadorAppState();
 }
 
 class _OrganizadorAppState extends State<OrganizadorApp> {
-  final AppState _state = AppState();
+  AppState get _state => widget.state;
 
   // O tema só é recalculado quando paleta ou efeitos mudam.
   AppPalette? _themePalette;

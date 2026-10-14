@@ -82,6 +82,16 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 onPressed: () => _push(const SettingsScreen()),
               ),
             ),
+            if (AppScope.of(context).storageError != null)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                color: AppScope.of(context).palette.surface,
+                child: Text(
+                  '[!] ${AppScope.of(context).storageError}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
             Expanded(child: IndexedStack(index: _index, children: _screens)),
           ],
         ),

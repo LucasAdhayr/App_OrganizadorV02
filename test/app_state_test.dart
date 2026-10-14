@@ -67,12 +67,32 @@ void main() {
       expect(t.due, DateTime(2026, 10, 14));
     });
 
-    test('concluir antes do prazo avança a partir do prazo', () {
+    test('recorrente não pode ser concluída antes do dia da ocorrência', () {
       final s = _state();
       final t = _task(s,
           kind: TaskKind.recurring, rule: daily, due: DateTime(2026, 10, 15));
-      s.complete(t);
-      expect(t.due, DateTime(2026, 10, 16));
+      expect(s.canComplete(t), isFalse);
+      expect(s.complete(t), isFalse);
+      expect(s.skip(t), isFalse);
+      expect(t.due, DateTime(2026, 10, 15));
+      expect(s.history, isEmpty);
+    });
+
+    test('cliques repetidos em concluir não fazem a recorrente andar', () {
+      final s = _state();
+      final t = _task(s,
+          kind: TaskKind.recurring, rule: daily, due: DateTime(2026, 10, 13));
+      expect(s.complete(t), isTrue);
+      expect(s.complete(t), isFalse);
+      expect(s.complete(t), isFalse);
+      expect(t.due, DateTime(2026, 10, 14));
+      expect(s.history.length, 1);
+    });
+
+    test('única e reutilizável não têm a trava', () {
+      final s = _state();
+      final t = _task(s, kind: TaskKind.single, due: DateTime(2026, 12, 1));
+      expect(s.canComplete(t), isTrue);
     });
 
     test('pular só avança a ocorrência e registra no histórico', () {

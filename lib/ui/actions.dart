@@ -16,7 +16,10 @@ void toast(
   messenger.hideCurrentSnackBar();
   messenger.showSnackBar(
     SnackBar(
-      duration: Duration(seconds: onUndo == null ? 3 : 6),
+      // Com botão de ação, o Flutter mantém o aviso na tela até ser dispensado
+      // (persist). Aqui ele deve sumir sozinho em 3 segundos.
+      persist: false,
+      duration: const Duration(seconds: 3),
       behavior: SnackBarBehavior.floating,
       backgroundColor: p.surface,
       elevation: 0,
@@ -44,7 +47,17 @@ void showToast(BuildContext context, String message, {VoidCallback? onUndo}) {
 // Todas as ações capturam estado e mensageiro ANTES de qualquer espera,
 // porque a linha que chamou pode sair da tela logo depois da ação.
 
+/// Uma tarefa recorrente só pode ser concluída ou pulada a partir do dia da
+/// sua ocorrência. Antes disso, avisa e devolve false.
+bool ensureCanComplete(BuildContext context, Task t) {
+  final s = AppScope.read(context);
+  if (s.canComplete(t)) return true;
+  showToast(context, 'Ainda não. A próxima é ${fmtDateShort(t.due!)}.');
+  return false;
+}
+
 void completeTask(BuildContext context, Task t) {
+  if (!ensureCanComplete(context, t)) return;
   final s = AppScope.read(context);
   final m = ScaffoldMessenger.of(context);
   s.complete(t);
@@ -91,6 +104,7 @@ Future<void> discardTask(BuildContext context, Task t) async {
 }
 
 void skipTask(BuildContext context, Task t) {
+  if (!ensureCanComplete(context, t)) return;
   final s = AppScope.read(context);
   final m = ScaffoldMessenger.of(context);
   s.skip(t);

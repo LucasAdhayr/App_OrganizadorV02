@@ -19,14 +19,14 @@ flutter test
 
 ## Estado atual
 
-**Etapa 1: protótipo navegável.** Telas, tema e gestos funcionam, mas os dados são de exemplo e ficam só na memória (somem ao fechar o app). Ainda não há banco local, notificações nem backup.
+**Etapa 2: banco local.** Tarefas, histórico, notas e configurações ficam salvos em SQLite no próprio celular e voltam ao reabrir o app. Ainda não há notificações nem backup.
 
 | Etapa | Conteúdo | Estado |
 |---|---|---|
 | 0 | Ambiente e chave de assinatura | feita |
-| 1 | Protótipo navegável com o tema | em validação |
-| 2 | Banco local (Drift), tarefas e recorrências | próxima |
-| 3 | Notificações, diagnóstico, histórico editável | — |
+| 1 | Protótipo navegável com o tema | feita |
+| 2 | Banco local (sqflite), tarefas e recorrências | em validação |
+| 3 | Notificações, diagnóstico, histórico editável | próxima |
 | 4 | Backup e restauração em arquivo local | — |
 | 5 | Notas, ideias, aniversários | — |
 

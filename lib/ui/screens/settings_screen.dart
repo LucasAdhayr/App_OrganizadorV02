@@ -96,10 +96,28 @@ class SettingsScreen extends StatelessWidget {
           ),
           const FieldLabel('Sobre esta versão'),
           Text(
-            'Protótipo da Etapa 1. Os dados são de exemplo e ficam só na '
-            'memória: somem quando o app é fechado. O banco local chega na '
-            'Etapa 2.',
+            'Etapa 2. Tudo fica salvo no banco do próprio celular e continua '
+            'aqui depois de fechar o app.',
             style: dim,
+          ),
+          const FieldLabel('Dados de exemplo'),
+          Text(
+            'Só funciona com o app vazio (sem tarefas nem notas).',
+            style: dim,
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton(
+            onPressed: () {
+              final empty = s.tasks.isEmpty && s.notes.isEmpty;
+              s.loadSampleData();
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                content: Text(empty
+                    ? 'Dados de exemplo carregados.'
+                    : 'O app já tem dados. Nada foi feito.'),
+                duration: const Duration(seconds: 3),
+              ));
+            },
+            child: const Text('Carregar dados de exemplo'),
           ),
         ],
       ),
