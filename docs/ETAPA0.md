@@ -53,7 +53,7 @@ Se o APK for assinado com chaves diferentes, o Android recusa a atualização e 
 ## 7. Clonar o repositório
 ```
 cd C:\dev
-git clone https://github.com/lucastoledoeng-web/organizador-pessoal.git
+git clone https://github.com/LucasAdhayr/App_OrganizadorV02.git
 ```
 Copie para dentro dele a pasta `docs` com os dois arquivos. Depois:
 ```
