@@ -43,6 +43,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       if (!mounted) return;
       final s = AppScope.read(context);
       s.tick();
+      s.replan(); // o limite de 50 lembretes avança com o tempo
       s.backup?.runAutoIfDue();
     });
     // Backup automático: ao abrir, se já passou das 23:00 sem backup.

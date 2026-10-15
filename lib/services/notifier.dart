@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
@@ -73,7 +75,8 @@ class LocalNotifier implements Notifier {
       importance: Importance.high,
     ));
     // Android 13+: pede a permissão na primeira vez. Antes disso, é automática.
-    await android?.requestNotificationsPermission();
+    // Sem await: no Android 13+ isto abre um diálogo e não deve travar a abertura.
+    if (android != null) unawaited(android.requestNotificationsPermission());
     return n;
   }
 
