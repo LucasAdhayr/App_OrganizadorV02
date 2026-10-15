@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../core/dates.dart';
 import '../core/ids.dart';
 import '../core/models.dart';
+import '../core/reminders.dart';
 import '../data/store.dart';
+import '../services/notifier.dart';
 import 'palette.dart';
 
 /// Acesso ao estado a partir de qualquer widget.
@@ -64,9 +68,33 @@ class AppState extends ChangeNotifier {
   final DateTime Function() clock;
 
   AppStore? _store;
+  Notifier? _notifier;
+  bool _replanQueued = false;
 
   /// Liga o banco depois da criação (usado pelo main, que abre o banco antes).
   void attachStore(AppStore store) => _store = store;
+
+  /// Notificações (null se não iniciaram). Usado pela tela de diagnóstico.
+  Notifier? get notifier => _notifier;
+
+  /// Liga as notificações e já agenda os lembretes do que existe.
+  void attachNotifier(Notifier n) {
+    _notifier = n;
+    replan();
+  }
+
+  /// Lembretes que valem agora (usado também pela tela de diagnóstico).
+  List<Reminder> get plannedReminders => planReminders(tasks, now);
+
+  /// Refaz os lembretes agendados. Várias chamadas seguidas viram uma só.
+  void replan() {
+    if (_notifier == null || _replanQueued) return;
+    _replanQueued = true;
+    scheduleMicrotask(() {
+      _replanQueued = false;
+      _notifier?.replace(plannedReminders);
+    });
+  }
 
   /// Mensagem de erro de armazenamento (banco indisponível, falha ao gravar).
   /// A interface mostra um aviso enquanto ela existir.
@@ -139,7 +167,10 @@ class AppState extends ChangeNotifier {
     });
   }
 
-  void _saveTask(Task t) => _save((s) => s.upsertTask(t));
+  void _saveTask(Task t) {
+    _save((s) => s.upsertTask(t));
+    replan();
+  }
 
   void _saveNote(Note n) => _save((s) => s.upsertNote(n));
 
@@ -374,6 +405,41 @@ class AppState extends ChangeNotifier {
     }
     _saveTask(t);
     _undo = null;
+    notifyListeners();
+  }
+
+  // ---------------------------------------------------------------- histórico
+
+  /// Apaga um registro do histórico (a tarefa não é afetada). Devolve a
+  /// posição, para o "desfazer" recolocar no mesmo lugar.
+  int removeHistoryEvent(HistoryEvent e) {
+    final i = history.indexWhere((x) => x.id == e.id);
+    if (i >= 0) history.removeAt(i);
+    _save((s) => s.deleteHistory([e.id]));
+    notifyListeners();
+    return i;
+  }
+
+  void insertHistoryEvent(int index, HistoryEvent e) {
+    history.insert(index.clamp(0, history.length), e);
+    _save((s) => s.addHistory(e));
+    notifyListeners();
+  }
+
+  /// Corrige quando o registro aconteceu (ex.: concluí ontem e só marquei hoje).
+  void changeHistoryTime(HistoryEvent e, DateTime at) {
+    final i = history.indexWhere((x) => x.id == e.id);
+    if (i < 0) return;
+    final updated = HistoryEvent(
+      id: e.id,
+      at: at,
+      kind: e.kind,
+      taskId: e.taskId,
+      taskTitle: e.taskTitle,
+      detail: e.detail,
+    );
+    history[i] = updated;
+    _save((s) => s.addHistory(updated));
     notifyListeners();
   }
 

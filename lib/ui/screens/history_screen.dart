@@ -18,7 +18,7 @@ extension on _Period {
 }
 
 /// Histórico com filtros por período e tipo de ação. Tocar em um registro
-/// abre a tarefa, onde dá para reabrir ou editar (corrigir um engano).
+/// permite abrir a tarefa, corrigir a data/hora ou apagar o registro.
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
 
@@ -48,13 +48,86 @@ class _HistoryScreenState extends State<HistoryScreen> {
     return fmtDateShort(at);
   }
 
-  void _open(BuildContext context, AppState s, HistoryEvent e) {
+  /// Toque em um registro: abrir a tarefa, corrigir quando aconteceu ou apagar
+  /// o registro (a tarefa em si não muda).
+  Future<void> _open(BuildContext context, AppState s, HistoryEvent e) async {
+    final m = ScaffoldMessenger.of(context);
     final task = s.taskById(e.taskId);
-    if (task == null) {
-      showToast(context, 'Essa tarefa não existe mais.');
-      return;
+    final choice = await showTermSheet<String>(
+      context,
+      (c) => SheetFrame(
+        title: e.taskTitle,
+        children: [
+          Text(
+            '${e.kind.label} · ${fmtWhen(e.at, s.now)}',
+            style: TextStyle(color: s.palette.dim, fontSize: 13),
+          ),
+          gap(12),
+          if (task != null) ...[
+            TermButton(
+              label: 'Abrir tarefa',
+              expand: true,
+              onPressed: () => Navigator.of(c).pop('open'),
+            ),
+            gap(),
+          ],
+          TermButton(
+            label: 'Mudar data e hora',
+            icon: Icons.event,
+            expand: true,
+            onPressed: () => Navigator.of(c).pop('time'),
+          ),
+          gap(),
+          TermButton(
+            label: 'Apagar registro',
+            expand: true,
+            danger: true,
+            onPressed: () => Navigator.of(c).pop('delete'),
+          ),
+          gap(),
+        ],
+      ),
+    );
+    if (choice == null || !context.mounted) return;
+
+    switch (choice) {
+      case 'open':
+        if (task != null) showTaskDetail(context, task);
+      case 'time':
+        final date = await showDatePicker(
+          context: context,
+          initialDate: e.at,
+          firstDate: DateTime(2020),
+          lastDate: dateOnly(s.now),
+        );
+        if (date == null || !context.mounted) return;
+        final time = await showTimePicker(
+          context: context,
+          initialTime: TimeOfDay(hour: e.at.hour, minute: e.at.minute),
+        );
+        if (time == null) return;
+        final at = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+        if (at.isAfter(s.now)) {
+          toast(m, s.palette, 'Esse horário ainda não chegou.');
+          return;
+        }
+        final old = e.at;
+        s.changeHistoryTime(e, at);
+        toast(m, s.palette, 'Registro atualizado.',
+            onUndo: () => s.changeHistoryTime(e, old));
+      case 'delete':
+        final ok = await confirmTerm(
+          context,
+          title: 'Apagar registro',
+          message: 'Só o registro some do histórico. A tarefa continua como está.',
+          confirmLabel: 'Apagar',
+          danger: true,
+        );
+        if (!ok) return;
+        final index = s.removeHistoryEvent(e);
+        toast(m, s.palette, 'Registro apagado.',
+            onUndo: () => s.insertHistoryEvent(index, e));
     }
-    showTaskDetail(context, task);
   }
 
   @override

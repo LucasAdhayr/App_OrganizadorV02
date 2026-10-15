@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../app/app_state.dart';
 import '../../app/palette.dart';
 import '../term_widgets.dart';
+import 'diagnostic_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -88,6 +89,23 @@ class SettingsScreen extends StatelessWidget {
             '1 h, hoje à noite ou amanhã; aviso 1 dia antes e às 09:00.',
             style: dim,
           ),
+          const FieldLabel('Lembretes'),
+          Text(
+            'Tarefas com horário avisam na hora. Só com data, avisam na véspera '
+            'e no dia, às 09:00. Nada toca entre 00:00 e 05:00.',
+            style: dim,
+          ),
+          const SizedBox(height: 8),
+          TermButton(
+            label: 'Diagnóstico de notificações',
+            icon: Icons.notifications_active_outlined,
+            expand: true,
+            onPressed: () => Navigator.of(context).push<void>(
+              MaterialPageRoute<void>(
+                builder: (_) => DiagnosticScreen(notifier: s.notifier),
+              ),
+            ),
+          ),
           const FieldLabel('Backup'),
           Text(
             'Chega na Etapa 4: arquivo no próprio celular, manual e diário, '
@@ -96,7 +114,7 @@ class SettingsScreen extends StatelessWidget {
           ),
           const FieldLabel('Sobre esta versão'),
           Text(
-            'Etapa 2. Tudo fica salvo no banco do próprio celular e continua '
+            'Etapa 3. Tudo fica salvo no banco do próprio celular e continua '
             'aqui depois de fechar o app.',
             style: dim,
           ),
