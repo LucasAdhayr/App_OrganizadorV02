@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../app/app_state.dart';
 import '../../app/palette.dart';
+import '../../core/dates.dart';
 import '../term_widgets.dart';
+import 'backup_screen.dart';
 import 'diagnostic_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -108,13 +110,23 @@ class SettingsScreen extends StatelessWidget {
           ),
           const FieldLabel('Backup'),
           Text(
-            'Chega na Etapa 4: arquivo no próprio celular, manual e diário, '
-            'mostrando a data do último.',
+            s.lastBackupAt == null
+                ? '[!] Nenhum backup ainda.'
+                : 'Último: ${fmtWhen(s.lastBackupAt!, s.now)}.',
             style: dim,
+          ),
+          const SizedBox(height: 8),
+          TermButton(
+            label: 'Backup e restauração',
+            icon: Icons.save_alt,
+            expand: true,
+            onPressed: () => Navigator.of(context).push<void>(
+              MaterialPageRoute<void>(builder: (_) => const BackupScreen()),
+            ),
           ),
           const FieldLabel('Sobre esta versão'),
           Text(
-            'Etapa 3. Tudo fica salvo no banco do próprio celular e continua '
+            'Etapa 4. Tudo fica salvo no banco do próprio celular e continua '
             'aqui depois de fechar o app.',
             style: dim,
           ),

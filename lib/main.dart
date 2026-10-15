@@ -6,6 +6,8 @@ import 'app/app_state.dart';
 import 'app/palette.dart';
 import 'app/theme.dart';
 import 'data/sqlite_store.dart';
+import 'services/backup_files.dart';
+import 'services/backup_manager.dart';
 import 'services/notifier.dart';
 import 'ui/home_shell.dart';
 import 'ui/term_widgets.dart';
@@ -22,6 +24,7 @@ Future<void> main() async {
     // Sem banco o app ainda abre, mas avisa que nada será salvo.
     state.storageError = 'Banco de dados indisponível: $e';
   }
+  state.backup = BackupManager(AndroidBackupFiles(), state);
   try {
     final notifier = await LocalNotifier.create();
     state.attachNotifier(notifier);

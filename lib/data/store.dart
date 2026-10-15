@@ -36,4 +36,9 @@ abstract class AppStore {
   Future<void> deleteNote(String id);
 
   Future<void> setSetting(String key, String value);
+
+  /// Restauração: troca tarefas, histórico e notas pelo conteúdo de [snap], de
+  /// uma vez só (tudo ou nada). As configurações de [snap] são gravadas por
+  /// cima; as demais (como "último backup") ficam como estão.
+  Future<void> replaceAll(StoreSnapshot snap);
 }

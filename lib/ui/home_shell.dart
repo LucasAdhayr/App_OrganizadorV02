@@ -40,7 +40,14 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     // Mantém o relógio e os atrasos em dia sem o usuário precisar fazer nada.
     _timer = Timer.periodic(const Duration(minutes: 1), (_) {
-      if (mounted) AppScope.read(context).tick();
+      if (!mounted) return;
+      final s = AppScope.read(context);
+      s.tick();
+      s.backup?.runAutoIfDue();
+    });
+    // Backup automático: ao abrir, se já passou das 23:00 sem backup.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) AppScope.read(context).backup?.runAutoIfDue();
     });
   }
 
@@ -54,7 +61,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && mounted) {
-      AppScope.read(context).tick();
+      final s = AppScope.read(context);
+      s.tick();
+      s.backup?.runAutoIfDue();
     }
   }
 

@@ -147,6 +147,31 @@ class SqliteStore implements AppStore {
       );
 
   @override
+  Future<void> replaceAll(StoreSnapshot snap) => _db.transaction((txn) async {
+        await txn.delete('tasks');
+        await txn.delete('history');
+        await txn.delete('notes');
+        final batch = txn.batch();
+        for (final t in snap.tasks) {
+          batch.insert('tasks', taskToMap(t), conflictAlgorithm: ConflictAlgorithm.replace);
+        }
+        for (final e in snap.history) {
+          batch.insert('history', eventToMap(e), conflictAlgorithm: ConflictAlgorithm.replace);
+        }
+        for (final n in snap.notes) {
+          batch.insert('notes', noteToMap(n), conflictAlgorithm: ConflictAlgorithm.replace);
+        }
+        for (final e in snap.settings.entries) {
+          batch.insert(
+            'settings',
+            <String, Object?>{'key': e.key, 'value': e.value},
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
+        }
+        await batch.commit(noResult: true);
+      });
+
+  @override
   Future<void> setSetting(String key, String value) => _db.insert(
         'settings',
         <String, Object?>{'key': key, 'value': value},

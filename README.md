@@ -19,16 +19,16 @@ flutter test
 
 ## Estado atual
 
-**Etapa 3: lembretes.** (Etapa 2, o banco local, já está feita.) Tarefas, histórico, notas e configurações ficam salvos em SQLite no próprio celular e voltam ao reabrir o app. Ainda não há backup em arquivo.
+**Etapa 4: backup.** Banco local, lembretes e backup em arquivo JSON no celular (manual e automático às 23:00, com restauração). Tarefas, histórico, notas e configurações ficam salvos em SQLite no próprio celular e voltam ao reabrir o app. 
 
 | Etapa | Conteúdo | Estado |
 |---|---|---|
 | 0 | Ambiente e chave de assinatura | feita |
 | 1 | Protótipo navegável com o tema | feita |
 | 2 | Banco local (sqflite), tarefas e recorrências | feita |
-| 3 | Notificações, diagnóstico, histórico editável | em validação |
-| 4 | Backup e restauração em arquivo local | próxima |
-| 5 | Notas, ideias, aniversários | — |
+| 3 | Notificações, diagnóstico, histórico editável | feita |
+| 4 | Backup e restauração em arquivo local | em validação |
+| 5 | Notas, ideias, aniversários | próxima |
 
 ## Estrutura
 

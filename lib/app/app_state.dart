@@ -6,7 +6,9 @@ import '../core/dates.dart';
 import '../core/ids.dart';
 import '../core/models.dart';
 import '../core/reminders.dart';
+import '../data/backup.dart';
 import '../data/store.dart';
+import '../services/backup_manager.dart';
 import '../services/notifier.dart';
 import 'palette.dart';
 
@@ -69,6 +71,9 @@ class AppState extends ChangeNotifier {
 
   AppStore? _store;
   Notifier? _notifier;
+
+  /// Backups (null em testes sem Android).
+  BackupManager? backup;
   bool _replanQueued = false;
 
   /// Liga o banco depois da criação (usado pelo main, que abre o banco antes).
@@ -108,6 +113,13 @@ class AppState extends ChangeNotifier {
   EffectLevel effects = EffectLevel.soft;
   int reviewAfterDays = 14;
 
+  // Backup: quando foi o último, qual arquivo e de que tipo; e se o automático
+  // está ligado.
+  DateTime? lastBackupAt;
+  String? lastBackupName;
+  BackupKind? lastBackupKind;
+  bool autoBackup = true;
+
   _Undo? _undo;
 
   DateTime get now => clock();
@@ -124,6 +136,20 @@ class AppState extends ChangeNotifier {
     final store = _store;
     if (store == null) return;
     final snap = await store.load();
+    _applySnapshot(snap);
+    final at = int.tryParse(snap.settings['lastBackupAt'] ?? '');
+    lastBackupAt = at == null ? null : DateTime.fromMillisecondsSinceEpoch(at);
+    lastBackupName = snap.settings['lastBackupName'];
+    lastBackupKind = BackupKind.values
+        .where((k) => k.name == snap.settings['lastBackupKind'])
+        .firstOrNull;
+    autoBackup = snap.settings['autoBackup'] != '0';
+    notifyListeners();
+  }
+
+  /// Coloca na memória o que veio do banco ou de um backup restaurado.
+  void _applySnapshot(StoreSnapshot snap) {
+    _undo = null;
     tasks
       ..clear()
       ..addAll(snap.tasks);
@@ -153,6 +179,44 @@ class AppState extends ChangeNotifier {
         _saveTask(t);
       }
     }
+    replan();
+  }
+
+  /// Tudo o que vai para um arquivo de backup.
+  StoreSnapshot exportSnapshot() => StoreSnapshot(
+        tasks: List.of(tasks),
+        history: List.of(history),
+        notes: List.of(notes),
+        settings: <String, String>{
+          'palette': palette.id,
+          'effects': effects.name,
+          'reviewAfterDays': '$reviewAfterDays',
+        },
+      );
+
+  /// Substitui todos os dados pelos de [snap] (restauração de backup). Grava
+  /// no banco primeiro; só mexe na memória se isso der certo.
+  Future<void> restoreFrom(StoreSnapshot snap) async {
+    await _store?.replaceAll(snap);
+    _applySnapshot(snap);
+    notifyListeners();
+  }
+
+  void setBackupInfo(DateTime at, String name, BackupKind kind) {
+    // A cópia de segurança de uma restauração não conta como "último backup".
+    if (kind == BackupKind.safety) return;
+    lastBackupAt = at;
+    lastBackupName = name;
+    lastBackupKind = kind;
+    _save((s) => s.setSetting('lastBackupAt', '${at.millisecondsSinceEpoch}'));
+    _save((s) => s.setSetting('lastBackupName', name));
+    _save((s) => s.setSetting('lastBackupKind', kind.name));
+    notifyListeners();
+  }
+
+  void setAutoBackup(bool on) {
+    autoBackup = on;
+    _save((s) => s.setSetting('autoBackup', on ? '1' : '0'));
     notifyListeners();
   }
 

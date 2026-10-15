@@ -36,5 +36,20 @@ class FakeStore implements AppStore {
   Future<void> deleteNote(String id) async => deletedNotes.add(id);
 
   @override
+  Future<void> replaceAll(StoreSnapshot snap) async {
+    tasks
+      ..clear()
+      ..addEntries(snap.tasks.map((t) => MapEntry(t.id, t.copy())));
+    history
+      ..clear()
+      ..addEntries(snap.history.map((e) => MapEntry(e.id, e)));
+    notes
+      ..clear()
+      ..addEntries(snap.notes.map((n) => MapEntry(n.id, n)));
+    deletedNotes.clear();
+    settings.addAll(snap.settings);
+  }
+
+  @override
   Future<void> setSetting(String key, String value) async => settings[key] = value;
 }
