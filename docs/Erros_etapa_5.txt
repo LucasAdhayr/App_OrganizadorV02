@@ -1,0 +1,107 @@
+Erro - 14/10 - 23:50:
+PS C:\dev\App_OrganizadorV02> git pull
+>> flutter analyze
+>> flutter test
+>> flutter run
+remote: Enumerating objects: 13, done.
+remote: Counting objects: 100% (13/13), done.
+remote: Compressing objects: 100% (3/3), done.
+remote: Total 7 (delta 4), reused 7 (delta 4), pack-reused 0 (from 0)
+Unpacking objects: 100% (7/7), 1.08 KiB | 33.00 KiB/s, done.
+From https://github.com/LucasAdhayr/App_OrganizadorV02
+   dd61176..67017dd  main       -> origin/main
+Updating dd61176..67017dd
+Fast-forward
+ lib/app/app_state.dart |  1 +
+ lib/data/backup.dart   | 10 +++++-----
+ 2 files changed, 6 insertions(+), 5 deletions(-)
+Analyzing App_OrganizadorV02...
+
+   info - The import of 'dart:typed_data' is unnecessary because all of the used elements are also provided by the
+          import of 'package:flutter/services.dart'. Try removing the import directive -
+          lib\services\backup_files.dart:1:8 - unnecessary_import
+   info - Statements in an if should be enclosed in a block. Try wrapping the statement in a block -
+          lib\ui\screens\backup_screen.dart:40:20 - curly_braces_in_flow_control_structures
+   info - Use the null-aware marker '?' rather than a null check via an 'if'. Try using '?' -
+          lib\ui\term_widgets.dart:187:13 - use_null_aware_elements
+
+3 issues found. (ran in 6.9s)
+00:11 +69: All tests passed!
+Launching lib\main.dart on M2007J20CG in debug mode...
+WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::load has been called by net.rubygrapefruit.platform.internal.NativeLibraryLoader in an unnamed module (file:/C:/Users/lucas/.gradle/wrapper/dists/gradle-9.3.1-all/9ot9r568e8zfvvd4mn8rbu1j0/gradle-9.3.1/lib/native-platform-0.22-milestone-29.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':file_picker:checkDebugAarMetadata'.
+> A failure occurred while executing com.android.build.gradle.internal.tasks.CheckAarMetadataWorkAction
+   > An issue was found when checking AAR metadata:
+
+       1.  Dependency ':flutter_plugin_android_lifecycle' requires libraries and applications that
+           depend on it to compile against version 36 or later of the
+           Android APIs.
+
+           :file_picker is currently compiled against android-34.
+
+           Recommended action: Update this project to use a newer compileSdk
+           of at least 36, for example 36.
+
+           Note that updating a library or application's compileSdk (which
+           allows newer APIs to be used) can be done separately from updating
+           targetSdk (which opts the app in to new runtime behavior) and
+           minSdk (which determines which devices the app can be installed
+           on).
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 2m 37s
+The message received from the daemon indicates that the daemon has disappeared.
+Build request sent: Build{id=fc24f3fd-d4a8-4d7b-abf0-68f98d976c12, currentDir=C:\dev\App_OrganizadorV02\android}
+Attempting to read last messages from the daemon log...
+Daemon pid: 9972
+  log file: C:\Users\lucas\.gradle\daemon\9.3.1\daemon-9972.out.log
+----- Last 20 lines from daemon log file - daemon-9972.out.log -----
+2026-10-14T23:55:33.881-0300 [DEBUG] [org.gradle.cache.internal.DefaultFileLockManager] Waiting to acquire shared lock on daemon addresses registry.
+2026-10-14T23:55:33.881-0300 [DEBUG] [org.gradle.cache.internal.DefaultFileLockManager] Lock acquired on daemon addresses registry.
+2026-10-14T23:55:33.881-0300 [DEBUG] [org.gradle.cache.internal.DefaultFileLockManager] Releasing lock on daemon addresses registry.
+2026-10-14T23:55:33.889-0300 [DEBUG] [org.gradle.launcher.daemon.server.Daemon] Finished periodic daemon health check.
+2026-10-14T23:55:43.853-0300 [DEBUG] [org.gradle.launcher.daemon.server.Daemon] Starting periodic daemon health check.
+2026-10-14T23:55:43.863-0300 [DEBUG] [org.gradle.cache.internal.DefaultFileLockManager] Waiting to acquire shared lock on daemon addresses registry.
+2026-10-14T23:55:43.863-0300 [DEBUG] [org.gradle.cache.internal.DefaultFileLockManager] Lock acquired on daemon addresses registry.
+2026-10-14T23:55:43.864-0300 [DEBUG] [org.gradle.cache.internal.DefaultFileLockManager] Releasing lock on daemon addresses registry.
+2026-10-14T23:55:43.880-0300 [DEBUG] [org.gradle.cache.internal.DefaultFileLockManager] Waiting to acquire shared lock on daemon addresses registry.
+2026-10-14T23:55:43.881-0300 [DEBUG] [org.gradle.cache.internal.DefaultFileLockManager] Lock acquired on daemon addresses registry.
+2026-10-14T23:55:43.881-0300 [DEBUG] [org.gradle.cache.internal.DefaultFileLockManager] Releasing lock on daemon addresses registry.
+2026-10-14T23:55:43.889-0300 [DEBUG] [org.gradle.launcher.daemon.server.Daemon] Finished periodic daemon health check.
+2026-10-14T23:55:53.852-0300 [DEBUG] [org.gradle.launcher.daemon.server.Daemon] Starting periodic daemon health check.
+2026-10-14T23:55:53.861-0300 [DEBUG] [org.gradle.cache.internal.DefaultFileLockManager] Waiting to acquire shared lock on daemon addresses registry.
+2026-10-14T23:55:53.861-0300 [DEBUG] [org.gradle.cache.internal.DefaultFileLockManager] Lock acquired on daemon addresses registry.
+2026-10-14T23:55:53.862-0300 [DEBUG] [org.gradle.cache.internal.DefaultFileLockManager] Releasing lock on daemon addresses registry.
+2026-10-14T23:55:53.878-0300 [DEBUG] [org.gradle.cache.internal.DefaultFileLockManager] Waiting to acquire shared lock on daemon addresses registry.
+2026-10-14T23:55:53.878-0300 [DEBUG] [org.gradle.cache.internal.DefaultFileLockManager] Lock acquired on daemon addresses registry.
+2026-10-14T23:55:53.878-0300 [DEBUG] [org.gradle.cache.internal.DefaultFileLockManager] Releasing lock on daemon addresses registry.
+2026-10-14T23:55:53.885-0300 [DEBUG] [org.gradle.launcher.daemon.server.Daemon] Finished periodic daemon health check.----- End of the daemon log -----
+
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Gradle build daemon disappeared unexpectedly (it may have been killed or may have crashed)
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+Running Gradle task 'assembleDebug'...                            967,4s
+Error: Gradle task assembleDebug failed with exit code 1
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+Fim do erro 
