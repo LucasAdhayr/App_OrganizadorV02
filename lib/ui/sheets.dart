@@ -130,30 +130,61 @@ Future<bool> confirmTerm(
 
 // ------------------------------------------------------------------- adiar
 
-Future<DateTime?> showSnoozeSheet(BuildContext context) {
+/// Opções de adiamento: +10 min, +1 hora ou data e hora escolhidas.
+/// Devolve null se o usuário desistir ou escolher um horário que já passou.
+Future<DateTime?> showSnoozeSheet(BuildContext context, {Task? task}) async {
   final n = AppScope.read(context).now;
-  final options = <(String, DateTime)>[
-    ('+10 min', n.add(const Duration(minutes: 10))),
-    ('+1 hora', n.add(const Duration(hours: 1))),
-    if (n.hour < 20) ('Hoje à noite (20:00)', DateTime(n.year, n.month, n.day, 20)),
-    ('Amanhã (09:00)', DateTime(n.year, n.month, n.day + 1, 9)),
-  ];
-  return showTermSheet<DateTime>(
+  final choice = await showTermSheet<Object>(
     context,
     (c) => SheetFrame(
       title: 'Adiar para quando?',
       children: [
-        for (final o in options) ...[
-          TermButton(
-            label: o.$1,
-            expand: true,
-            onPressed: () => Navigator.of(c).pop(o.$2),
-          ),
-          gap(),
-        ],
+        TermButton(
+          label: '+10 min',
+          expand: true,
+          onPressed: () => Navigator.of(c).pop(n.add(const Duration(minutes: 10))),
+        ),
+        gap(),
+        TermButton(
+          label: '+1 hora',
+          expand: true,
+          onPressed: () => Navigator.of(c).pop(n.add(const Duration(hours: 1))),
+        ),
+        gap(),
+        TermButton(
+          label: 'Escolher data',
+          icon: Icons.event,
+          expand: true,
+          onPressed: () => Navigator.of(c).pop('pick'),
+        ),
+        gap(),
       ],
     ),
   );
+  if (choice is DateTime) return choice;
+  if (choice != 'pick' || !context.mounted) return null;
+
+  final today = dateOnly(n);
+  final current = task?.dueDate;
+  final date = await showDatePicker(
+    context: context,
+    initialDate: (current != null && !current.isBefore(today)) ? current : today,
+    firstDate: today,
+    lastDate: DateTime(n.year + 5, 12, 31),
+  );
+  if (date == null || !context.mounted) return null;
+  final time = await showTimePicker(
+    context: context,
+    initialTime: task?.dueTime ?? const TimeOfDay(hour: 9, minute: 0),
+  );
+  if (time == null || !context.mounted) return null;
+
+  final until = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+  if (!until.isAfter(n)) {
+    showToast(context, 'Escolha um horário que ainda não passou.');
+    return null;
+  }
+  return until;
 }
 
 // ------------------------------------------------------------------ botão "+"
@@ -306,14 +337,14 @@ class _TaskDetail extends StatelessWidget {
       children: [
         info('TIPO', t.kind.label),
         if (t.recurrence != null) info('REPETE', t.recurrence!.label),
-        if (t.due != null)
+        if (t.dueDate != null)
           info(
             t.kind == TaskKind.recurring ? 'PRÓXIMA' : 'PRAZO',
-            '${fmtDateShort(t.due!)}${t.time == null ? '' : ' ${fmtTime(t.time!)}'}'
+            '${fmtDateShort(t.dueDate!)}${t.dueTime == null ? '' : ' ${fmtTime(t.dueTime!)}'}'
             '${label.overdue ? '  (atrasada)' : ''}',
           ),
-        if (t.status == TaskStatus.snoozed && t.snoozedUntil != null)
-          info('ADIADA ATÉ', fmtWhen(t.snoozedUntil!, s.now)),
+        if (t.snoozedUntil != null)
+          info('ADIADA PARA', fmtWhen(t.snoozedUntil!, s.now)),
         if (doneAgo != null)
           info('ÚLTIMA VEZ', doneAgo == 0 ? 'hoje' : 'há $doneAgo dia${doneAgo == 1 ? '' : 's'}'),
         info('CRIADA EM', fmtDateFull(t.createdAt)),
@@ -331,7 +362,7 @@ class _TaskDetail extends StatelessWidget {
             gap(),
           ] else ...[
             Text(
-              'Só dá para concluir a partir de ${fmtDateShort(t.due!)}.',
+              'Só dá para concluir a partir de ${fmtDateShort(t.dueDate!)}.',
               style: TextStyle(color: p.dim, fontSize: 13),
             ),
             gap(),

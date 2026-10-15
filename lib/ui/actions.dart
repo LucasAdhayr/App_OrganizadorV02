@@ -52,7 +52,7 @@ void showToast(BuildContext context, String message, {VoidCallback? onUndo}) {
 bool ensureCanComplete(BuildContext context, Task t) {
   final s = AppScope.read(context);
   if (s.canComplete(t)) return true;
-  showToast(context, 'Ainda não. A próxima é ${fmtDateShort(t.due!)}.');
+  showToast(context, 'Ainda não. A próxima é ${fmtDateShort(t.dueDate!)}.');
   return false;
 }
 
@@ -69,17 +69,10 @@ void completeTask(BuildContext context, Task t) {
   toast(m, s.palette, msg, onUndo: s.undo);
 }
 
-void applySnooze(BuildContext context, Task t, DateTime until) {
-  final s = AppScope.read(context);
-  final m = ScaffoldMessenger.of(context);
-  s.snooze(t, until);
-  toast(m, s.palette, 'Adiada para ${fmtWhen(until, s.now)}.', onUndo: s.undo);
-}
-
 Future<void> snoozeTask(BuildContext context, Task t) async {
   final s = AppScope.read(context);
   final m = ScaffoldMessenger.of(context);
-  final until = await showSnoozeSheet(context);
+  final until = await showSnoozeSheet(context, task: t);
   if (until == null) return;
   s.snooze(t, until);
   toast(m, s.palette, 'Adiada para ${fmtWhen(until, s.now)}.', onUndo: s.undo);

@@ -51,8 +51,8 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
     _kind = t?.kind ?? TaskKind.single;
     _rtype = r?.type ?? RecurrenceType.daily;
     _weekdays = Set<int>.of(r?.weekdays ?? const <int>{});
-    _due = (t != null && t.kind == TaskKind.single) ? t.due : null;
-    _time = t?.time;
+    _due = (t != null && t.kind == TaskKind.single) ? t.dueDate : null;
+    _time = (t != null && t.kind == TaskKind.single) ? t.dueTime : t?.time;
   }
 
   @override
@@ -365,6 +365,9 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
       );
       s.saveTask(result, isNew: true);
     } else {
+      // Mudar data ou horário na edição vale mais que um adiamento anterior.
+      final moved = existing.due != due || existing.time != time;
+      if (moved) existing.snoozedUntil = null;
       existing
         ..title = title
         ..kind = _kind

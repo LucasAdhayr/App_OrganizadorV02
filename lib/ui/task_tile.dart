@@ -8,25 +8,19 @@ import 'sheets.dart';
 import 'term_widgets.dart';
 
 /// Linha de tarefa: título e prazo. Gestos:
-/// toque em [ ] ou deslizar à direita = concluir; deslizar à esquerda = adiar;
+/// toque em [ ] ou deslizar à direita = concluir; deslizar à esquerda = adiar
+/// (+10 min, +1 hora ou escolher data e hora);
 /// toque no texto = detalhes (onde ficam editar e descartar).
-class TaskTile extends StatefulWidget {
+class TaskTile extends StatelessWidget {
   const TaskTile({super.key, required this.task});
 
   final Task task;
 
   @override
-  State<TaskTile> createState() => _TaskTileState();
-}
-
-class _TaskTileState extends State<TaskTile> {
-  DateTime? _pendingSnooze;
-
-  @override
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
     final p = s.palette;
-    final t = widget.task;
+    final t = task;
     final label = dueLabel(t, s.now);
 
     final row = TermRow(
@@ -63,19 +57,13 @@ class _TaskTileState extends State<TaskTile> {
           // Recorrente ainda não vencida: o cartão volta e aparece um aviso.
           return ensureCanComplete(context, t);
         }
-        final until = await showSnoozeSheet(context);
-        if (until == null) return false;
-        _pendingSnooze = until;
-        return true;
+        // Adiar nunca tira a linha da tela por gesto: a ação roda aqui e o
+        // cartão volta; a lista se reorganiza sozinha. (Antes, a linha era
+        // "dispensada" mas continuava na árvore e o Flutter acusava erro.)
+        await snoozeTask(context, t);
+        return false;
       },
-      onDismissed: (direction) {
-        if (direction == DismissDirection.startToEnd) {
-          completeTask(context, t);
-        } else {
-          final until = _pendingSnooze;
-          if (until != null) applySnooze(context, t, until);
-        }
-      },
+      onDismissed: (direction) => completeTask(context, t),
       child: row,
     );
   }

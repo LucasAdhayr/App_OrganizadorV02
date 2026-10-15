@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart' show TimeOfDay;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:organizador/app/app_state.dart';
+import 'package:organizador/core/labels.dart';
 import 'package:organizador/core/models.dart';
 
 // Terça-feira, 13/10/2026, 10:00.
@@ -151,12 +152,67 @@ void main() {
       expect(v.breve, [coming]);
     });
 
-    test('tarefa adiada para depois some até a hora de voltar', () {
+    test('adiar para hoje à noite mantém pendente, em HOJE, sem histórico', () {
       final s = _state();
       final t = _task(s, kind: TaskKind.single, due: DateTime(2026, 10, 13));
       s.snooze(t, DateTime(2026, 10, 13, 20));
-      expect(t.status, TaskStatus.snoozed);
-      expect(s.todayView().isEmpty, isTrue);
+      expect(t.status, TaskStatus.pending);
+      expect(s.history, isEmpty);
+      expect(s.todayView().hoje, [t]);
+    });
+
+    test('adiar para amanhã tira de hoje e põe na agenda de amanhã', () {
+      final s = _state();
+      final t = _task(s, kind: TaskKind.single, due: DateTime(2026, 10, 13));
+      s.snooze(t, DateTime(2026, 10, 14, 9));
+      expect(t.status, TaskStatus.pending);
+      expect(t.dueDate, DateTime(2026, 10, 14));
+      expect(t.dueTime, const TimeOfDay(hour: 9, minute: 0));
+      expect(s.history, isEmpty);
+      expect(s.todayView().hoje, isEmpty);
+      expect(s.todayView().breve, [t]);
+      expect(s.isActive(t), isTrue);
+    });
+
+    test('adiar tarefa de dia anterior (atrasada) para amanhã a tira do atraso', () {
+      final s = _state();
+      final t = _task(s, kind: TaskKind.single, due: DateTime(2026, 10, 9));
+      expect(dueLabel(t, _now).overdue, isTrue);
+      s.snooze(t, DateTime(2026, 10, 14, 9));
+      expect(dueLabel(t, _now).overdue, isFalse);
+      expect(s.todayView().agora, isEmpty);
+    });
+
+    test('recorrente adiada mantém a regra e conclui normalmente depois', () {
+      final s = _state();
+      final t = _task(s,
+          kind: TaskKind.recurring, rule: daily, due: DateTime(2026, 10, 13));
+      s.snooze(t, DateTime(2026, 10, 14, 9));
+      expect(s.canComplete(t), isFalse);
+      expect(t.due, DateTime(2026, 10, 13));
+    });
+
+    test('desfazer o adiamento restaura data e horário', () {
+      final s = _state();
+      final t = _task(s, kind: TaskKind.single, due: DateTime(2026, 10, 13));
+      s.snooze(t, DateTime(2026, 10, 14, 9));
+      s.undo();
+      expect(t.snoozedUntil, isNull);
+      expect(t.dueDate, DateTime(2026, 10, 13));
+    });
+
+    test('hoje com horário já passado é atrasada', () {
+      final s = _state(); // agora: 10:00
+      final late = _task(s,
+          kind: TaskKind.single,
+          due: DateTime(2026, 10, 13),
+          time: const TimeOfDay(hour: 8, minute: 0));
+      final later = _task(s,
+          kind: TaskKind.single,
+          due: DateTime(2026, 10, 13),
+          time: const TimeOfDay(hour: 15, minute: 0));
+      expect(dueLabel(late, _now).overdue, isTrue);
+      expect(dueLabel(later, _now).overdue, isFalse);
     });
   });
 

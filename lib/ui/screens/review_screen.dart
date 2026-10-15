@@ -65,7 +65,7 @@ class _ReviewCard extends StatelessWidget {
   final Task task;
 
   String _age(AppState s) {
-    final due = task.due;
+    final due = task.dueDate;
     if (task.kind == TaskKind.recurring && due != null) {
       return 'Atrasada há ${daysBetween(due, s.now)} dias';
     }

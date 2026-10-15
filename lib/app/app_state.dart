@@ -118,6 +118,13 @@ class AppState extends ChangeNotifier {
     );
     reviewAfterDays =
         (int.tryParse(snap.settings['reviewAfterDays'] ?? '') ?? 14).clamp(3, 90);
+    // Adiamentos antigos (status "adiada") viram pendente + data adiada.
+    for (final t in tasks) {
+      if (t.status == TaskStatus.snoozed) {
+        t.status = TaskStatus.pending;
+        _saveTask(t);
+      }
+    }
     notifyListeners();
   }
 
@@ -148,22 +155,16 @@ class AppState extends ChangeNotifier {
   bool isActive(Task t) =>
       t.status == TaskStatus.pending || t.status == TaskStatus.snoozed;
 
-  /// Pendente, ou adiada cujo horário de volta já passou.
-  bool isVisibleNow(Task t) {
-    if (t.status == TaskStatus.pending) return true;
-    if (t.status == TaskStatus.snoozed) {
-      final until = t.snoozedUntil;
-      return until == null || !until.isAfter(now);
-    }
-    return false;
-  }
+  /// Adiar não muda o estado da tarefa: ela continua pendente, só com outra
+  /// data/hora (ver [Task.dueDate]). Por isso toda tarefa ativa é visível.
+  bool isVisibleNow(Task t) => isActive(t);
 
   /// Tarefa antiga que pede uma decisão (nunca é apagada sozinha).
   bool needsReview(Task t) {
     if (!isVisibleNow(t)) return false;
     final n = now;
     if (t.kind == TaskKind.recurring) {
-      final due = t.due;
+      final due = t.dueDate;
       // Além de atrasada, precisa estar sem nenhuma interação: assim "sim,
       // continua pendente" (que atualiza a tarefa) tira ela da fila.
       return due != null &&
@@ -182,12 +183,12 @@ class AppState extends ChangeNotifier {
   int _minutes(TimeOfDay t) => t.hour * 60 + t.minute;
 
   int _compare(Task a, Task b) {
-    final da = a.due == null ? DateTime(9999) : dateOnly(a.due!);
-    final db = b.due == null ? DateTime(9999) : dateOnly(b.due!);
+    final da = a.dueDate == null ? DateTime(9999) : dateOnly(a.dueDate!);
+    final db = b.dueDate == null ? DateTime(9999) : dateOnly(b.dueDate!);
     final byDay = da.compareTo(db);
     if (byDay != 0) return byDay;
-    final ma = a.time == null ? 1440 : _minutes(a.time!);
-    final mb = b.time == null ? 1440 : _minutes(b.time!);
+    final ma = a.dueTime == null ? 1440 : _minutes(a.dueTime!);
+    final mb = b.dueTime == null ? 1440 : _minutes(b.dueTime!);
     final byTime = ma.compareTo(mb);
     if (byTime != 0) return byTime;
     return a.title.compareTo(b.title);
@@ -203,16 +204,19 @@ class AppState extends ChangeNotifier {
 
     for (final t in tasks) {
       if (!isVisibleNow(t) || needsReview(t)) continue;
-      final due = t.due == null ? null : dateOnly(t.due!);
+      final due = t.dueDate == null ? null : dateOnly(t.dueDate!);
       final diff = due == null ? null : daysBetween(today, due);
+      final time = t.dueTime;
+      final snoozedAhead = t.snoozedUntil?.isAfter(n) ?? false;
 
       if (diff != null && diff < 0) {
         agora.add(t); // atrasada, mas ainda dentro do prazo de revisão
-      } else if (diff == 0 && t.time != null && _minutes(t.time!) <= nowMin + 60) {
+      } else if (diff == 0 &&
+          time != null &&
+          !snoozedAhead &&
+          _minutes(time) <= nowMin + 60) {
         agora.add(t); // horário já passou ou chega em até 1 hora
-      } else if (diff == 0 ||
-          t.status == TaskStatus.snoozed ||
-          (t.kind == TaskKind.reusable && due == null)) {
+      } else if (diff == 0 || (t.kind == TaskKind.reusable && due == null)) {
         hoje.add(t);
       } else if (diff != null && diff > 0 && diff <= 3) {
         breve.add(t);
@@ -269,7 +273,7 @@ class AppState extends ChangeNotifier {
   /// andava semanas para a frente. Única e reutilizável não têm essa trava.
   bool canComplete(Task t) {
     if (t.kind != TaskKind.recurring) return true;
-    final due = t.due;
+    final due = t.dueDate;
     return due == null || !dateOnly(due).isAfter(dateOnly(now));
   }
 
@@ -301,12 +305,13 @@ class AppState extends ChangeNotifier {
     return true;
   }
 
+  /// Adia a tarefa para [until] (data e hora). Ela continua pendente e passa a
+  /// aparecer nessa data na agenda. Não conclui nem entra no histórico.
   void snooze(Task t, DateTime until) {
     _remember(t);
-    t.status = TaskStatus.snoozed;
+    t.status = TaskStatus.pending;
     t.snoozedUntil = until;
     t.updatedAt = now;
-    _log(HistoryKind.snoozed, t, detail: 'até ${fmtWhen(until, now)}');
     _saveTask(t);
     notifyListeners();
   }

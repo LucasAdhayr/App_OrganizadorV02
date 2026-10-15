@@ -12,10 +12,11 @@ class AgendaScreen extends StatelessWidget {
   const AgendaScreen({super.key});
 
   static int _compare(Task a, Task b) {
-    final byDay = dateOnly(a.due!).compareTo(dateOnly(b.due!));
+    final byDay = dateOnly(a.dueDate!).compareTo(dateOnly(b.dueDate!));
     if (byDay != 0) return byDay;
-    final ma = a.time == null ? 1440 : a.time!.hour * 60 + a.time!.minute;
-    final mb = b.time == null ? 1440 : b.time!.hour * 60 + b.time!.minute;
+    final ta = a.dueTime, tb = b.dueTime;
+    final ma = ta == null ? 1440 : ta.hour * 60 + ta.minute;
+    final mb = tb == null ? 1440 : tb.hour * 60 + tb.minute;
     final byTime = ma.compareTo(mb);
     if (byTime != 0) return byTime;
     return a.title.compareTo(b.title);
@@ -27,12 +28,12 @@ class AgendaScreen extends StatelessWidget {
     final p = s.palette;
     final today = dateOnly(s.now);
 
-    final items = s.tasks.where((t) => s.isActive(t) && t.due != null).toList()
+    final items = s.tasks.where((t) => s.isActive(t) && t.dueDate != null).toList()
       ..sort(_compare);
 
     final groups = <String, List<Task>>{};
     for (final t in items) {
-      final d = dateOnly(t.due!);
+      final d = dateOnly(t.dueDate!);
       final diff = daysBetween(today, d);
       final key = diff < 0
           ? 'ATRASADAS'

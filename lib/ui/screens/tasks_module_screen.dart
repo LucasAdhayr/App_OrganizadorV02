@@ -21,8 +21,8 @@ class _TasksModuleScreenState extends State<TasksModuleScreen> {
   bool _showClosed = false;
 
   static int _byDue(Task a, Task b) {
-    final da = a.due == null ? DateTime(9999) : dateOnly(a.due!);
-    final db = b.due == null ? DateTime(9999) : dateOnly(b.due!);
+    final da = a.dueDate == null ? DateTime(9999) : dateOnly(a.dueDate!);
+    final db = b.dueDate == null ? DateTime(9999) : dateOnly(b.dueDate!);
     final byDay = da.compareTo(db);
     if (byDay != 0) return byDay;
     return a.title.compareTo(b.title);
@@ -73,7 +73,7 @@ class _TasksModuleScreenState extends State<TasksModuleScreen> {
     }
 
     return TermRow(
-      key: ValueKey('mod-${t.id}-${t.status.name}-${t.due}'),
+      key: ValueKey('mod-${t.id}-${t.status.name}-${t.due}-${t.snoozedUntil}'),
       title: t.title,
       subtitle: subtitle,
       leading: marker,

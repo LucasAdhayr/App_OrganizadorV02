@@ -136,6 +136,19 @@ class Task {
   DateTime? snoozedUntil;
   DateTime? lastDoneAt;
 
+  /// Data efetiva: se a tarefa foi adiada, vale a data do adiamento; senão, o
+  /// prazo (ou próxima ocorrência). É a que aparece na agenda e nos rótulos.
+  DateTime? get dueDate {
+    final s = snoozedUntil;
+    return s != null ? dateOnly(s) : due;
+  }
+
+  /// Horário efetivo (o do adiamento, se houver).
+  TimeOfDay? get dueTime {
+    final s = snoozedUntil;
+    return s != null ? TimeOfDay(hour: s.hour, minute: s.minute) : time;
+  }
+
   Task copy() => Task(
         id: id,
         title: title,

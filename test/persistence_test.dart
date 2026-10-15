@@ -92,6 +92,44 @@ void main() {
       expect(store.history.length, 1); // só o "criada"
     });
 
+    test('adiamento é gravado e volta ao reabrir, sem histórico', () async {
+      final store = FakeStore();
+      final a = _open(store);
+      final t = Task(
+          id: a.newId('t'),
+          title: 'X',
+          kind: TaskKind.single,
+          createdAt: _now,
+          due: DateTime(2026, 10, 13));
+      a.saveTask(t, isNew: true);
+      a.snooze(t, DateTime(2026, 10, 14, 9, 30));
+      await _settle();
+
+      final b = _open(store);
+      await b.load();
+      expect(b.tasks.single.status, TaskStatus.pending);
+      expect(b.tasks.single.dueDate, DateTime(2026, 10, 14));
+      expect(b.tasks.single.dueTime, const TimeOfDay(hour: 9, minute: 30));
+      expect(b.history.map((e) => e.kind), [HistoryKind.created]);
+    });
+
+    test('adiamento antigo (status adiada) vira pendente ao abrir', () async {
+      final store = FakeStore();
+      store.tasks['t-1'] = Task(
+        id: 't-1',
+        title: 'Velha',
+        kind: TaskKind.single,
+        createdAt: _now,
+        status: TaskStatus.snoozed,
+        snoozedUntil: DateTime(2026, 10, 14, 9),
+      );
+      final a = _open(store);
+      await a.load();
+      await _settle();
+      expect(a.tasks.single.status, TaskStatus.pending);
+      expect(store.tasks['t-1']!.status, TaskStatus.pending);
+    });
+
     test('notas: apagar é lógico e desfazer traz de volta', () async {
       final store = FakeStore();
       final a = _open(store);
