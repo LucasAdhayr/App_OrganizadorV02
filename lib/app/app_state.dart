@@ -62,6 +62,7 @@ class _Undo {
 class AppState extends ChangeNotifier {
   AppState({DateTime Function()? clock, bool seed = false, AppStore? store})
       : clock = clock ?? DateTime.now,
+        // ignore: prefer_initializing_formals
         _store = store {
     if (seed) _seed();
   }

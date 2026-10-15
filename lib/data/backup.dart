@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import '../core/dates.dart';
-import '../core/models.dart';
 import 'codec.dart';
 import 'store.dart';
 
@@ -72,7 +71,8 @@ BackupData decodeBackup(String text) {
   if (raw is! Map<String, dynamic> || raw['format'] != kBackupFormat) {
     throw const BackupFormatException('Esse arquivo não é um backup do Organizador.');
   }
-  final version = raw['version'];
+  final Map<String, dynamic> doc = raw;
+  final version = doc['version'];
   if (version is! int || version < 1) {
     throw const BackupFormatException('Versão do backup inválida.');
   }
@@ -81,13 +81,13 @@ BackupData decodeBackup(String text) {
       'Backup criado por uma versão mais nova do app (v$version). Atualize o app.',
     );
   }
-  final created = DateTime.tryParse('${raw['createdAt']}');
+  final created = DateTime.tryParse('${doc['createdAt']}');
   if (created == null) {
     throw const BackupFormatException('Backup sem data de criação.');
   }
 
   List<T> rows<T>(String key, T Function(Map<String, Object?>) parse) {
-    final list = raw[key];
+    final list = doc[key];
     if (list is! List) throw BackupFormatException('Backup sem a lista "$key".');
     final out = <T>[];
     for (var i = 0; i < list.length; i++) {
@@ -103,7 +103,7 @@ BackupData decodeBackup(String text) {
   }
 
   final settings = <String, String>{};
-  final rawSettings = raw['settings'];
+  final rawSettings = doc['settings'];
   if (rawSettings is Map) {
     for (final e in rawSettings.entries) {
       if (kBackupSettingKeys.contains(e.key) && e.value != null) {
