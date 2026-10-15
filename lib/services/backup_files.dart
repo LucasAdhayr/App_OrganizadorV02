@@ -1,6 +1,3 @@
-import 'dart:typed_data';
-
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
 
 /// Um arquivo de backup guardado pelo app.
@@ -34,8 +31,8 @@ abstract class BackupFiles {
 
 /// Android: grava em Downloads/Organizador (MediaStore, sem pedir permissão de
 /// armazenamento) e lê/lista/apaga só o que o próprio app criou. Para escolher
-/// um arquivo qualquer (por exemplo, depois de reinstalar) usa o seletor do
-/// sistema.
+/// um arquivo qualquer (por exemplo, depois de reinstalar) usa o seletor de
+/// documentos do sistema.
 class AndroidBackupFiles implements BackupFiles {
   static const MethodChannel _channel = MethodChannel('br.pessoal.organizador/backup');
 
@@ -79,8 +76,7 @@ class AndroidBackupFiles implements BackupFiles {
 
   @override
   Future<Uint8List?> pick() async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.any, withData: true);
-    if (result == null || result.files.isEmpty) return null;
-    return result.files.single.bytes;
+    // Seletor de documentos do sistema (feito no lado Android).
+    return _channel.invokeMethod<Uint8List>('pick');
   }
 }

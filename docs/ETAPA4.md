@@ -20,8 +20,7 @@ Limite do Android: o app só enxerga os arquivos que ele mesmo criou. Depois de 
 Formato do arquivo: `docs/BACKUP_FORMATO.md`.
 
 ## Novo no projeto
-- Dependência: `file_picker ^8.1.0` (só para escolher o arquivo).
-- Código nativo: `MainActivity.kt` (canal `br.pessoal.organizador/backup`: salvar, listar, ler e apagar em Downloads/Organizador). Exige Android 10+ (seu Poco tem 12).
+- Código nativo: `MainActivity.kt` (canal `br.pessoal.organizador/backup`: salvar, listar, ler, apagar em Downloads/Organizador e escolher arquivo pelo seletor do sistema; sem plugin extra). Exige Android 10+ (seu Poco tem 12).
 
 ## Como validar
 ```

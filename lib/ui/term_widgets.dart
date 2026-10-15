@@ -184,7 +184,7 @@ class TermScaffold extends StatelessWidget {
               trailing: action ?? const SizedBox(width: 48),
             ),
             Expanded(child: body),
-            if (bottom != null) bottom!,
+            ?bottom,
           ],
         ),
       ),

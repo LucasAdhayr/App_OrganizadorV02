@@ -1,6 +1,8 @@
 package br.pessoal.organizador
 
+import android.app.Activity
 import android.content.ContentValues
+import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
@@ -12,6 +14,9 @@ import io.flutter.plugin.common.MethodChannel
 /// armazenamento e o app só enxerga os arquivos que ele mesmo criou.
 class MainActivity : FlutterActivity() {
     private val folder = "Download/Organizador"
+    private val pickRequest = 4711
+    private val maxBackupBytes = 50 * 1024 * 1024
+    private var pendingPick: MethodChannel.Result? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -23,6 +28,7 @@ class MainActivity : FlutterActivity() {
                             save(call.argument<String>("name")!!, call.argument<ByteArray>("bytes")!!)
                             result.success(null)
                         }
+                        "pick" -> pick(result)
                         "list" -> result.success(list())
                         "read" -> result.success(read(call.argument<String>("uri")!!))
                         "delete" -> {
@@ -35,6 +41,41 @@ class MainActivity : FlutterActivity() {
                     result.error("backup", e.message ?: e.toString(), null)
                 }
             }
+    }
+
+    /// Seletor de documentos do sistema: devolve os bytes do arquivo escolhido
+    /// ou null se o usuário cancelar.
+    private fun pick(result: MethodChannel.Result) {
+        if (pendingPick != null) {
+            result.error("backup", "Já existe uma escolha de arquivo aberta.", null)
+            return
+        }
+        pendingPick = result
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "*/*"
+        }
+        startActivityForResult(intent, pickRequest)
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != pickRequest) return
+        val result = pendingPick ?: return
+        pendingPick = null
+        val uri = data?.data
+        if (resultCode != Activity.RESULT_OK || uri == null) {
+            result.success(null)
+            return
+        }
+        try {
+            val bytes = contentResolver.openInputStream(uri)!!.use { it.readBytes() }
+            if (bytes.size > maxBackupBytes) throw Exception("Arquivo grande demais para ser um backup.")
+            result.success(bytes)
+        } catch (e: Exception) {
+            result.error("backup", e.message ?: e.toString(), null)
+        }
     }
 
     private fun save(name: String, bytes: ByteArray) {

@@ -37,10 +37,12 @@ class _BackupScreenState extends State<BackupScreen> {
     if (m == null) return;
     try {
       final list = await m.saved();
-      if (mounted) setState(() {
-        _saved = list;
-        _listError = null;
-      });
+      if (mounted) {
+        setState(() {
+          _saved = list;
+          _listError = null;
+        });
+      }
     } catch (e) {
       if (mounted) setState(() => _listError = '$e');
     }
