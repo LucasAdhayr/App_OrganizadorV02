@@ -185,7 +185,7 @@ void main() {
       final s = AppState(clock: () => _now);
       var text = encodeBackup(s.exportSnapshot(), _now);
       text = text.replaceAll(RegExp(r',\s*"dates": \[\s*\]'), '');
-      expect(text.contains('"dates"'), isFalse);
+      expect(text.contains('"dates": ['), isFalse); // o resumo counts ainda tem dates: 0
       expect(decodeBackup(text).dateCount, 0);
     });
 
