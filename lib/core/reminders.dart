@@ -1,5 +1,6 @@
 import 'dates.dart';
 import 'models.dart';
+import 'special_dates.dart';
 
 /// Um lembrete já decidido: quando tocar e o que dizer.
 class Reminder {
@@ -52,6 +53,7 @@ DateTime _applySilence(DateTime at) =>
 List<Reminder> planReminders(
   Iterable<Task> tasks,
   DateTime now, {
+  Iterable<SpecialDate> dates = const <SpecialDate>[],
   int limit = kMaxReminders,
 }) {
   final out = <Reminder>[];
@@ -86,6 +88,33 @@ List<Reminder> planReminders(
       add(t, 0, DateTime(day.year, day.month, day.day - 1, kDateOnlyHour), 'Vence amanhã');
       add(t, 1, DateTime(day.year, day.month, day.day, kDateOnlyHour), 'Vence hoje');
     }
+  }
+
+  // Aniversários e datas: véspera e dia, às 09:00, na próxima ocorrência.
+  final today = dateOnly(now);
+  for (final d in dates) {
+    final day = d.next(today);
+    final base = (_fnv('d:${d.id}') & 0x1fffffff) * 4;
+    final what = switch (d.kind) {
+      DateKind.birthday => d.turningAge(today) != null && d.turningAge(today)! > 0
+          ? 'Faz ${d.turningAge(today)} ${d.turningAge(today) == 1 ? 'ano' : 'anos'}'
+          : 'Aniversário',
+      DateKind.date => 'Data importante',
+    };
+    void addDate(int slot, DateTime at, String when) {
+      final shifted = _applySilence(at);
+      if (!shifted.isAfter(now)) return;
+      out.add(Reminder(
+        id: base + slot,
+        taskId: 'date:${d.id}',
+        at: shifted,
+        title: d.title,
+        body: '$what $when',
+      ));
+    }
+
+    addDate(0, DateTime(day.year, day.month, day.day - 1, kDateOnlyHour), 'amanhã');
+    addDate(1, DateTime(day.year, day.month, day.day, kDateOnlyHour), 'hoje');
   }
 
   out.sort((a, b) => a.at.compareTo(b.at));

@@ -11,7 +11,10 @@ import 'task_form_screen.dart';
 
 /// ENTRADA: notas rápidas, salvas sem escolher nada. Podem virar tarefa.
 class InboxScreen extends StatefulWidget {
-  const InboxScreen({super.key});
+  const InboxScreen({super.key, this.ideasOnly = false});
+
+  /// Usado pelo módulo IDEIAS: mostra só ideias e esconde o filtro.
+  final bool ideasOnly;
 
   @override
   State<InboxScreen> createState() => _InboxScreenState();
@@ -19,12 +22,19 @@ class InboxScreen extends StatefulWidget {
 
 class _InboxScreenState extends State<InboxScreen> {
   bool _onlyIdeas = false;
+  String _query = '';
 
   @override
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
     final p = s.palette;
-    final notes = s.notes.where((n) => !_onlyIdeas || n.isIdea).toList().reversed.toList();
+    final onlyIdeas = widget.ideasOnly || _onlyIdeas;
+    final q = _query.trim().toLowerCase();
+    final notes = s.notes
+        .where((n) => (!onlyIdeas || n.isIdea) && (q.isEmpty || n.text.toLowerCase().contains(q)))
+        .toList()
+        .reversed
+        .toList();
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
@@ -37,30 +47,43 @@ class _InboxScreenState extends State<InboxScreen> {
           onPressed: () => showQuickNote(context),
         ),
         const SizedBox(height: 12),
-        Row(
-          children: [
-            TermButton(
-              label: 'Todas',
-              dense: true,
-              selected: !_onlyIdeas,
-              onPressed: () => setState(() => _onlyIdeas = false),
-            ),
-            const SizedBox(width: 8),
-            TermButton(
-              label: 'Ideias',
-              dense: true,
-              selected: _onlyIdeas,
-              onPressed: () => setState(() => _onlyIdeas = true),
-            ),
-          ],
+        TextField(
+          onChanged: (v) => setState(() => _query = v),
+          style: const TextStyle(fontSize: 14),
+          cursorColor: p.fg,
+          decoration: termInput(context, hint: 'Buscar nas notas'),
         ),
+        if (!widget.ideasOnly) ...[
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              TermButton(
+                label: 'Todas',
+                dense: true,
+                selected: !_onlyIdeas,
+                onPressed: () => setState(() => _onlyIdeas = false),
+              ),
+              const SizedBox(width: 8),
+              TermButton(
+                label: 'Ideias',
+                dense: true,
+                selected: _onlyIdeas,
+                onPressed: () => setState(() => _onlyIdeas = true),
+              ),
+            ],
+          ),
+        ],
         const SizedBox(height: 8),
         const TermDivider(),
         if (notes.isEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 40),
             child: Text(
-              _onlyIdeas ? '> Nenhuma ideia guardada.' : '> Nenhuma nota ainda.',
+              q.isNotEmpty
+                  ? '> Nada encontrado.'
+                  : onlyIdeas
+                      ? '> Nenhuma ideia guardada.'
+                      : '> Nenhuma nota ainda.',
               style: TextStyle(color: p.dim, fontSize: 14),
             ),
           )
@@ -126,6 +149,16 @@ class _NoteSheet extends StatelessWidget {
         ),
         gap(),
         TermButton(
+          label: 'Editar texto',
+          icon: Icons.edit_outlined,
+          expand: true,
+          onPressed: () {
+            Navigator.of(context).pop();
+            _editNote(host, n);
+          },
+        ),
+        gap(),
+        TermButton(
           label: n.isIdea ? 'Marcar como nota' : 'Marcar como ideia',
           expand: true,
           onPressed: () {
@@ -149,4 +182,48 @@ class _NoteSheet extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Edita o texto de uma nota numa folha.
+Future<void> _editNote(BuildContext host, Note n) {
+  final s = AppScope.read(host);
+  final m = ScaffoldMessenger.of(host);
+  final controller = TextEditingController(text: n.text);
+  return showTermSheet<void>(host, (c) {
+    void save() {
+      final text = controller.text.trim();
+      if (text.isEmpty) return;
+      final old = n.text;
+      s.editNote(n, text);
+      Navigator.of(c).pop();
+      toast(m, s.palette, 'Nota atualizada.', onUndo: () => s.editNote(n, old));
+    }
+
+    return SheetFrame(
+      title: 'Editar nota',
+      children: [
+        TextField(
+          controller: controller,
+          autofocus: true,
+          minLines: 3,
+          maxLines: 8,
+          textCapitalization: TextCapitalization.sentences,
+          style: const TextStyle(fontSize: 15),
+          cursorColor: s.palette.fg,
+          decoration: termInput(c),
+        ),
+        gap(12),
+        TermButton(label: 'Salvar', expand: true, primary: true, onPressed: save),
+      ],
+    );
+  });
+}
+
+/// Módulo IDEIAS: só as notas marcadas como ideia.
+class IdeasScreen extends StatelessWidget {
+  const IdeasScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) =>
+      const TermScaffold(title: 'Ideias', body: InboxScreen(ideasOnly: true));
 }

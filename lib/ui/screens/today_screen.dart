@@ -5,6 +5,7 @@ import '../../core/dates.dart';
 import '../../core/models.dart';
 import '../task_tile.dart';
 import '../term_widgets.dart';
+import 'dates_screen.dart';
 import 'review_screen.dart';
 
 /// Visão geral: o que importa agora, sem expor tudo de uma vez.
@@ -26,6 +27,7 @@ class _TodayScreenState extends State<TodayScreen> {
     final n = s.now;
     final v = s.todayView();
     final reviewCount = s.reviewQueue.length;
+    final soonDates = s.upcomingDates();
 
     final planned = s.doneToday() + v.agora.length + v.hoje.length;
     final done = s.doneToday();
@@ -76,7 +78,14 @@ class _TodayScreenState extends State<TodayScreen> {
             ),
           ),
         ],
-        if (v.isEmpty) _EmptyState(hasReview: reviewCount > 0) else ...rows,
+        if (soonDates.isNotEmpty) ...[
+          SectionHeader('DATAS', count: soonDates.length),
+          for (final d in soonDates) DateRow(key: ValueKey('today-date-${d.id}'), date: d),
+        ],
+        if (v.isEmpty)
+          (soonDates.isEmpty ? _EmptyState(hasReview: reviewCount > 0) : const SizedBox.shrink())
+        else
+          ...rows,
         if (hidden > 0) ...[
           const SizedBox(height: 12),
           TermButton(

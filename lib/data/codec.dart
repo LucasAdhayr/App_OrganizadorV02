@@ -2,6 +2,7 @@ import 'package:flutter/material.dart' show TimeOfDay;
 
 import '../core/dates.dart';
 import '../core/models.dart';
+import '../core/special_dates.dart';
 
 // Conversão entre os objetos do app e linhas do banco. Fica separada do
 // SQLite de propósito: dá para testar sem banco.
@@ -126,3 +127,34 @@ Note noteFromMap(Map<String, Object?> m) => Note(
       isIdea: (m['is_idea'] as int?) == 1,
       converted: (m['converted'] as int?) == 1,
     );
+
+// ------------------------------------------------------- aniversários e datas
+
+Map<String, Object?> dateToMap(SpecialDate d) => <String, Object?>{
+      'id': d.id,
+      'title': d.title,
+      'kind': d.kind.name,
+      'month': d.month,
+      'day': d.day,
+      'year': d.year,
+      'notes': d.notes,
+      'created_at': _ms(d.createdAt),
+    };
+
+SpecialDate dateFromMap(Map<String, Object?> m) {
+  final month = m['month']! as int;
+  final day = m['day']! as int;
+  if (month < 1 || month > 12 || day < 1 || day > 31) {
+    throw const FormatException('dia ou mês fora do intervalo');
+  }
+  return SpecialDate(
+    id: m['id']! as String,
+    title: m['title']! as String,
+    kind: _enumByName(DateKind.values, m['kind'], DateKind.date),
+    month: month,
+    day: day,
+    year: m['year'] as int?,
+    notes: (m['notes'] as String?) ?? '',
+    createdAt: _fromMs(m['created_at']! as int),
+  );
+}

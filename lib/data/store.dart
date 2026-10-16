@@ -1,4 +1,5 @@
 import '../core/models.dart';
+import '../core/special_dates.dart';
 
 /// Tudo o que o app guarda, lido de uma vez ao abrir.
 class StoreSnapshot {
@@ -6,12 +7,14 @@ class StoreSnapshot {
     this.tasks = const <Task>[],
     this.history = const <HistoryEvent>[],
     this.notes = const <Note>[],
+    this.dates = const <SpecialDate>[],
     this.settings = const <String, String>{},
   });
 
   final List<Task> tasks;
   final List<HistoryEvent> history;
   final List<Note> notes;
+  final List<SpecialDate> dates;
   final Map<String, String> settings;
 }
 
@@ -36,6 +39,11 @@ abstract class AppStore {
   Future<void> deleteNote(String id);
 
   Future<void> setSetting(String key, String value);
+
+  /// Aniversários e datas. Apagar é remoção de verdade (o backup guarda cópia).
+  Future<void> upsertDate(SpecialDate date);
+
+  Future<void> deleteDate(String id);
 
   /// Restauração: troca tarefas, histórico e notas pelo conteúdo de [snap], de
   /// uma vez só (tudo ou nada). As configurações de [snap] são gravadas por

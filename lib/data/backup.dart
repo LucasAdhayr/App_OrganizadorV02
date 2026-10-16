@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../core/dates.dart';
+import '../core/special_dates.dart';
 import 'codec.dart';
 import 'store.dart';
 
@@ -36,6 +37,7 @@ class BackupData {
   int get taskCount => snapshot.tasks.length;
   int get noteCount => snapshot.notes.length;
   int get historyCount => snapshot.history.length;
+  int get dateCount => snapshot.dates.length;
 }
 
 String encodeBackup(StoreSnapshot snap, DateTime now) {
@@ -47,6 +49,7 @@ String encodeBackup(StoreSnapshot snap, DateTime now) {
       'tasks': snap.tasks.length,
       'history': snap.history.length,
       'notes': snap.notes.length,
+      'dates': snap.dates.length,
     },
     'settings': <String, String>{
       for (final e in snap.settings.entries)
@@ -55,6 +58,7 @@ String encodeBackup(StoreSnapshot snap, DateTime now) {
     'tasks': snap.tasks.map(taskToMap).toList(),
     'history': snap.history.map(eventToMap).toList(),
     'notes': snap.notes.map(noteToMap).toList(),
+    'dates': snap.dates.map(dateToMap).toList(),
   };
   return const JsonEncoder.withIndent('  ').convert(map);
 }
@@ -86,8 +90,10 @@ BackupData decodeBackup(String text) {
     throw const BackupFormatException('Backup sem data de criação.');
   }
 
-  List<T> rows<T>(String key, T Function(Map<String, Object?>) parse) {
+  List<T> rows<T>(String key, T Function(Map<String, Object?>) parse,
+      {bool optional = false}) {
     final list = doc[key];
+    if (list == null && optional) return <T>[];
     if (list is! List) throw BackupFormatException('Backup sem a lista "$key".');
     final out = <T>[];
     for (var i = 0; i < list.length; i++) {
@@ -118,6 +124,8 @@ BackupData decodeBackup(String text) {
       tasks: rows('tasks', taskFromMap),
       history: rows('history', eventFromMap),
       notes: rows('notes', noteFromMap),
+      // Backups antigos (sem aniversários) continuam valendo.
+      dates: rows('dates', dateFromMap, optional: true),
       settings: settings,
     ),
   );

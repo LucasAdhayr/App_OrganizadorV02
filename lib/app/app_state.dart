@@ -6,6 +6,7 @@ import '../core/dates.dart';
 import '../core/ids.dart';
 import '../core/models.dart';
 import '../core/reminders.dart';
+import '../core/special_dates.dart';
 import '../data/backup.dart';
 import '../data/store.dart';
 import '../services/backup_manager.dart';
@@ -90,7 +91,7 @@ class AppState extends ChangeNotifier {
   }
 
   /// Lembretes que valem agora (usado também pela tela de diagnóstico).
-  List<Reminder> get plannedReminders => planReminders(tasks, now);
+  List<Reminder> get plannedReminders => planReminders(tasks, now, dates: dates);
 
   /// Refaz os lembretes agendados. Várias chamadas seguidas viram uma só.
   void replan() {
@@ -109,6 +110,7 @@ class AppState extends ChangeNotifier {
   final List<Task> tasks = [];
   final List<HistoryEvent> history = [];
   final List<Note> notes = [];
+  final List<SpecialDate> dates = [];
 
   AppPalette palette = AppPalette.green;
   EffectLevel effects = EffectLevel.soft;
@@ -160,6 +162,9 @@ class AppState extends ChangeNotifier {
     notes
       ..clear()
       ..addAll(snap.notes);
+    dates
+      ..clear()
+      ..addAll(snap.dates);
 
     final paletteId = snap.settings['palette'];
     palette = AppPalette.all.firstWhere(
@@ -188,6 +193,7 @@ class AppState extends ChangeNotifier {
         tasks: List.of(tasks),
         history: List.of(history),
         notes: List.of(notes),
+        dates: List.of(dates),
         settings: <String, String>{
           'palette': palette.id,
           'effects': effects.name,
@@ -508,7 +514,57 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ------------------------------------------------- aniversários e datas
+
+  /// Datas ordenadas pela próxima ocorrência.
+  List<SpecialDate> datesByNext() {
+    final today = dateOnly(now);
+    return List.of(dates)
+      ..sort((a, b) {
+        final byDay = a.next(today).compareTo(b.next(today));
+        return byDay != 0 ? byDay : a.title.compareTo(b.title);
+      });
+  }
+
+  /// Datas que caem hoje ou nos próximos [withinDays] dias.
+  List<SpecialDate> upcomingDates({int withinDays = 3}) {
+    final today = dateOnly(now);
+    return datesByNext()
+        .where((d) => daysBetween(today, d.next(today)) <= withinDays)
+        .toList();
+  }
+
+  void saveDate(SpecialDate d, {required bool isNew}) {
+    if (isNew) dates.add(d);
+    _save((s) => s.upsertDate(d));
+    replan();
+    notifyListeners();
+  }
+
+  /// Remove a data e devolve a posição, para o "desfazer" recolocá-la.
+  int removeDate(SpecialDate d) {
+    final i = dates.indexOf(d);
+    if (i >= 0) dates.removeAt(i);
+    _save((s) => s.deleteDate(d.id));
+    replan();
+    notifyListeners();
+    return i;
+  }
+
+  void insertDate(int index, SpecialDate d) {
+    dates.insert(index.clamp(0, dates.length), d);
+    _save((s) => s.upsertDate(d));
+    replan();
+    notifyListeners();
+  }
+
   // -------------------------------------------------------------------- notas
+
+  void editNote(Note n, String text) {
+    n.text = text;
+    _saveNote(n);
+    notifyListeners();
+  }
 
   Note addNote(String text, {bool idea = false}) {
     final n = Note(id: newId('n'), text: text, createdAt: now, isIdea: idea);
@@ -570,7 +626,7 @@ class AppState extends ChangeNotifier {
 
   /// Carrega os dados de exemplo (só com o app vazio) e grava no banco.
   void loadSampleData() {
-    if (tasks.isNotEmpty || notes.isNotEmpty) return;
+    if (tasks.isNotEmpty || notes.isNotEmpty || dates.isNotEmpty) return;
     _seed();
     for (final t in tasks) {
       _saveTask(t);
@@ -581,6 +637,10 @@ class AppState extends ChangeNotifier {
     for (final n in notes) {
       _saveNote(n);
     }
+    for (final d in dates) {
+      _save((s) => s.upsertDate(d));
+    }
+    replan();
     notifyListeners();
   }
 
@@ -712,6 +772,26 @@ class AppState extends ChangeNotifier {
         id: newId('n'),
         text: 'Perguntar ao orientador sobre o prazo do TFG',
         createdAt: ago(2),
+      ),
+    ]);
+
+    dates.addAll([
+      SpecialDate(
+        id: newId('d'),
+        title: 'Aniversário da mãe',
+        kind: DateKind.birthday,
+        month: n.month,
+        day: n.day,
+        year: 1968,
+        createdAt: n,
+      ),
+      SpecialDate(
+        id: newId('d'),
+        title: 'Dia do estágio',
+        kind: DateKind.date,
+        month: (n.month % 12) + 1,
+        day: 10,
+        createdAt: n,
       ),
     ]);
   }

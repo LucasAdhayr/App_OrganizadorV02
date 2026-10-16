@@ -2,6 +2,7 @@ import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
 import '../core/models.dart';
+import '../core/special_dates.dart';
 import 'codec.dart';
 import 'store.dart';
 
@@ -14,7 +15,7 @@ class SqliteStore implements AppStore {
 
   final Database _db;
 
-  static const int _version = 1;
+  static const int _version = 2;
   static const String fileName = 'organizador.db';
 
   /// Abre (ou cria) o banco. [path] só é usado em testes.
@@ -78,11 +79,27 @@ class SqliteStore implements AppStore {
         value TEXT NOT NULL
       )
     ''');
+    batch.execute(_datesSql);
     await batch.commit(noResult: true);
   }
 
+  static const String _datesSql = '''
+      CREATE TABLE dates (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        month INTEGER NOT NULL,
+        day INTEGER NOT NULL,
+        year INTEGER,
+        notes TEXT NOT NULL DEFAULT '',
+        created_at INTEGER NOT NULL
+      )
+    ''';
+
+  /// Migrações: nunca apagam dados existentes.
+  /// v2: tabela de aniversários e datas.
   static Future<void> _upgrade(Database db, int from, int to) async {
-    // Versão 1 é a primeira: ainda não há migrações.
+    if (from < 2) await db.execute(_datesSql);
   }
 
   Future<void> close() => _db.close();
@@ -97,10 +114,12 @@ class SqliteStore implements AppStore {
       orderBy: 'created_at ASC, rowid ASC',
     );
     final settings = await _db.query('settings');
+    final dates = await _db.query('dates', orderBy: 'created_at ASC, rowid ASC');
     return StoreSnapshot(
       tasks: tasks.map(taskFromMap).toList(),
       history: history.map(eventFromMap).toList(),
       notes: notes.map(noteFromMap).toList(),
+      dates: dates.map(dateFromMap).toList(),
       settings: <String, String>{
         for (final r in settings) r['key']! as String: r['value']! as String,
       },
@@ -151,6 +170,7 @@ class SqliteStore implements AppStore {
         await txn.delete('tasks');
         await txn.delete('history');
         await txn.delete('notes');
+        await txn.delete('dates');
         final batch = txn.batch();
         for (final t in snap.tasks) {
           batch.insert('tasks', taskToMap(t), conflictAlgorithm: ConflictAlgorithm.replace);
@@ -161,6 +181,9 @@ class SqliteStore implements AppStore {
         for (final n in snap.notes) {
           batch.insert('notes', noteToMap(n), conflictAlgorithm: ConflictAlgorithm.replace);
         }
+        for (final d in snap.dates) {
+          batch.insert('dates', dateToMap(d), conflictAlgorithm: ConflictAlgorithm.replace);
+        }
         for (final e in snap.settings.entries) {
           batch.insert(
             'settings',
@@ -170,6 +193,16 @@ class SqliteStore implements AppStore {
         }
         await batch.commit(noResult: true);
       });
+
+  @override
+  Future<void> upsertDate(SpecialDate date) => _db.insert(
+        'dates',
+        dateToMap(date),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+
+  @override
+  Future<void> deleteDate(String id) => _db.delete('dates', where: 'id = ?', whereArgs: [id]);
 
   @override
   Future<void> setSetting(String key, String value) => _db.insert(

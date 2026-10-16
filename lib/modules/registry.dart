@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../ui/screens/date_form_screen.dart';
+import '../ui/screens/dates_screen.dart';
+import '../ui/screens/inbox_screen.dart';
 import '../ui/screens/task_form_screen.dart';
 import '../ui/screens/tasks_module_screen.dart';
 
@@ -37,6 +40,9 @@ class ModuleDef {
 
 Widget _tasksScreen(BuildContext context) => const TasksModuleScreen();
 Widget _taskForm(BuildContext context) => const TaskFormScreen();
+Widget _datesScreen(BuildContext context) => const DatesScreen();
+Widget _dateForm(BuildContext context) => const DateFormScreen();
+Widget _ideasScreen(BuildContext context) => const IdeasScreen();
 
 const List<ModuleDef> kModules = [
   ModuleDef(
@@ -53,13 +59,16 @@ const List<ModuleDef> kModules = [
     label: 'ANIVERSÁRIOS',
     icon: Icons.cake_outlined,
     blurb: 'Datas que não podem passar',
+    screen: _datesScreen,
+    form: _dateForm,
     addLabel: 'ANIVERSÁRIO OU DATA',
   ),
   ModuleDef(
     id: 'ideias',
     label: 'IDEIAS',
     icon: Icons.lightbulb_outline,
-    blurb: 'Por enquanto, marque notas como ideia na ENTRADA',
+    blurb: 'Notas que você marcou como ideia',
+    screen: _ideasScreen,
   ),
   ModuleDef(
     id: 'livros',

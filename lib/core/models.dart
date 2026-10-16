@@ -230,7 +230,7 @@ class Note {
   });
 
   final String id;
-  final String text;
+  String text;
   final DateTime createdAt;
   bool isIdea;
   bool converted;
