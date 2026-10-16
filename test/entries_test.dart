@@ -2,7 +2,9 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:organizador/app/app_state.dart';
+import 'package:organizador/core/dates.dart';
 import 'package:organizador/core/entry.dart';
+import 'package:organizador/core/models.dart';
 import 'package:organizador/data/backup.dart';
 import 'package:organizador/data/codec.dart';
 
@@ -63,32 +65,32 @@ void main() {
       expect(s.entriesOf(kModExercise).length, 1);
     });
 
-    test('água: conta só os copos do dia', () {
+    test('água: conta só os ml do dia (registro antigo vale 200 ml)', () {
       final s = _app();
-      s.addGlass();
-      s.addGlass();
+      s.addWater();
+      s.addWater();
       s.addEntry(kModWater, at: DateTime(2026, 10, 14, 20));
-      expect(s.glassesOn(_clock), 2);
-      expect(s.glassesOn(DateTime(2026, 10, 14)), 1);
+      expect(s.waterMlOn(_clock), 400);
+      expect(s.waterMlOn(DateTime(2026, 10, 14)), 200);
     });
 
-    test('água: tirar o último copo de hoje, e desfazer', () {
+    test('água: tirar o último gole de hoje, e desfazer', () {
       final s = _app();
-      s.addGlass();
-      final removed = s.removeLastGlass();
+      s.addWater();
+      final removed = s.removeLastWater();
       expect(removed, isNotNull);
-      expect(s.glassesOn(_clock), 0);
-      expect(s.removeLastGlass(), isNull);
+      expect(s.waterMlOn(_clock), 0);
+      expect(s.removeLastWater(), isNull);
       s.insertEntry(s.entries.length, removed!);
-      expect(s.glassesOn(_clock), 1);
+      expect(s.waterMlOn(_clock), 200);
     });
 
-    test('meta de água fica entre 1 e 30', () {
+    test('meta de água fica entre 0,5 e 6 litros', () {
       final s = _app();
-      s.setWaterGoal(0);
-      expect(s.waterGoal, 1);
-      s.setWaterGoal(99);
-      expect(s.waterGoal, 30);
+      s.setWaterGoalMl(0);
+      expect(s.waterGoalMl, 500);
+      s.setWaterGoalMl(99999);
+      expect(s.waterGoalMl, 6000);
     });
 
     test('editar muda campos e horário; apagar e desfazer', () {
@@ -107,14 +109,14 @@ void main() {
       final store = FakeStore();
       final a = _app(store);
       final e = a.addEntry(kModBook, data: {'title': 'T', 'page': 3});
-      a.setWaterGoal(10);
+      a.setWaterGoalMl(3000);
       a.updateEntry(e, data: {'title': 'T', 'page': 50});
       await Future<void>.delayed(Duration.zero);
 
       final b = _app(store);
       await b.load();
       expect(b.entries.single.number('page'), 50);
-      expect(b.waterGoal, 10);
+      expect(b.waterGoalMl, 3000);
 
       b.removeEntry(b.entries.single);
       await Future<void>.delayed(Duration.zero);
@@ -133,16 +135,39 @@ void main() {
     test('leva os registros (data como objeto legível) e a meta de água', () {
       final s = _app();
       s.addEntry(kModBook, data: {'title': 'T', 'page': 7});
-      s.setWaterGoal(6);
+      s.setWaterGoalMl(2500);
       final text = encodeBackup(s.exportSnapshot(), _clock);
       final map = jsonDecode(text) as Map<String, dynamic>;
       expect((map['entries'] as List).single['data'], {'title': 'T', 'page': 7});
-      expect((map['settings'] as Map)['waterGoal'], '6');
+      expect((map['settings'] as Map)['waterGoalMl'], '2500');
 
       final back = decodeBackup(text);
       expect(back.entryCount, 1);
       expect(back.snapshot.entries.single.number('page'), 7);
-      expect(back.snapshot.settings['waterGoal'], '6');
+      expect(back.snapshot.settings['waterGoalMl'], '2500');
+    });
+
+    test('formata litros', () {
+      expect(fmtLiters(2000), '2,0 L');
+      expect(fmtLiters(1250), '1,25 L');
+    });
+
+    test('rotina de módulo sobrevive ao backup', () {
+      final s = _app();
+      s.saveTask(
+        Task(
+          id: 'ex',
+          title: 'Corrida',
+          kind: TaskKind.recurring,
+          createdAt: _clock,
+          due: DateTime(2026, 10, 16),
+          recurrence: const Recurrence(type: RecurrenceType.daily),
+          module: kModExercise,
+        ),
+        isNew: true,
+      );
+      final back = decodeBackup(encodeBackup(s.exportSnapshot(), _clock));
+      expect(back.snapshot.tasks.single.module, kModExercise);
     });
 
     test('backup antigo, sem "entries", ainda abre', () {
@@ -166,10 +191,10 @@ void main() {
       s.addEntry(kModFood, data: {'text': 'velho'});
       final other = _app();
       other.addEntry(kModFood, data: {'text': 'novo'});
-      other.setWaterGoal(12);
+      other.setWaterGoalMl(4000);
       await s.restoreFrom(other.exportSnapshot());
       expect(s.entries.map((e) => e.text('text')), ['novo']);
-      expect(s.waterGoal, 12);
+      expect(s.waterGoalMl, 4000);
     });
   });
 }

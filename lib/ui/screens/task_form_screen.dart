@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../app/app_state.dart';
 import '../../core/dates.dart';
+import '../../core/entry.dart';
 import '../../core/models.dart';
 import '../actions.dart';
 import '../term_widgets.dart';
@@ -15,7 +16,12 @@ class TaskFormScreen extends StatefulWidget {
     this.edit,
     this.initialTitle,
     this.initialNotes,
+    this.module,
   });
+
+  /// Módulo que será dono da tarefa (ex.: `exercicios`). Com módulo, a tarefa
+  /// é sempre uma rotina que se repete e precisa de horário.
+  final String? module;
 
   final Task? edit;
   final String? initialTitle;
@@ -32,6 +38,8 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
   late final TextEditingController _monthDay;
   late final TextEditingController _month;
   late TaskKind _kind;
+  String? get _module => widget.edit?.module ?? widget.module;
+  String get _moduleLabel => _module == kModExercise ? 'Exercício' : 'Rotina';
   late RecurrenceType _rtype;
   late Set<int> _weekdays;
   DateTime? _due;
@@ -48,7 +56,9 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
     _interval = TextEditingController(text: '${r?.interval ?? 2}');
     _monthDay = TextEditingController(text: '${r?.dayOfMonth ?? 1}');
     _month = TextEditingController(text: '${r?.month ?? 1}');
-    _kind = t?.kind ?? TaskKind.single;
+    _kind = (t?.module ?? widget.module) != null
+        ? TaskKind.recurring
+        : (t?.kind ?? TaskKind.single);
     _rtype = r?.type ?? RecurrenceType.daily;
     _weekdays = Set<int>.of(r?.weekdays ?? const <int>{});
     _due = (t != null && t.kind == TaskKind.single) ? t.dueDate : null;
@@ -182,12 +192,13 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
       children: [
         const FieldLabel('Horário'),
         _choices([
-          TermButton(
-            label: 'Sem horário',
-            dense: true,
-            selected: _time == null,
-            onPressed: () => setState(() => _time = null),
-          ),
+          if (_module == null)
+            TermButton(
+              label: 'Sem horário',
+              dense: true,
+              selected: _time == null,
+              onPressed: () => setState(() => _time = null),
+            ),
           TermButton(
             label: _time == null ? 'Escolher horário' : fmtTime(_time!),
             icon: Icons.schedule,
@@ -320,6 +331,10 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
       rule = _buildRule();
       if (rule == null) return;
     }
+    if (_module != null && _time == null) {
+      setState(() => _error = 'Escolha o horário (o aviso chega 1 hora antes).');
+      return;
+    }
 
     final s = AppScope.read(context);
     final messenger = ScaffoldMessenger.of(context);
@@ -362,6 +377,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
         time: time,
         recurrence: rule,
         notes: notes,
+        module: widget.module,
       );
       s.saveTask(result, isNew: true);
     } else {
@@ -395,7 +411,9 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
         (_kind == TaskKind.single && _due != null);
 
     return TermScaffold(
-      title: editing ? 'Editar tarefa' : 'Nova tarefa',
+      title: _module != null
+          ? (editing ? 'Editar rotina' : 'Nova rotina')
+          : (editing ? 'Editar tarefa' : 'Nova tarefa'),
       bottom: Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
         child: Column(
@@ -422,7 +440,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
         children: [
-          const FieldLabel('Título'),
+          FieldLabel(_module != null ? _moduleLabel : 'Título'),
           TextField(
             controller: _title,
             autofocus: !editing && widget.initialTitle == null,
@@ -431,19 +449,25 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
             maxLength: 120,
             style: const TextStyle(fontSize: 15),
             cursorColor: p.fg,
-            decoration: termInput(context, hint: 'O que precisa ser feito?'),
+            decoration: termInput(
+              context,
+              hint: _module != null ? 'Ex.: Musculação' : 'O que precisa ser feito?',
+            ),
           ),
-          const FieldLabel('Tipo'),
-          _choices([
-            for (final k in TaskKind.values)
-              TermButton(
-                label: k.label,
-                dense: true,
-                selected: _kind == k,
-                onPressed: () => setState(() => _kind = k),
-              ),
-          ]),
-          _hint(_kindHint(_kind)),
+          if (_module == null) ...[
+            const FieldLabel('Tipo'),
+            _choices([
+              for (final k in TaskKind.values)
+                TermButton(
+                  label: k.label,
+                  dense: true,
+                  selected: _kind == k,
+                  onPressed: () => setState(() => _kind = k),
+                ),
+            ]),
+            _hint(_kindHint(_kind)),
+          ] else
+            _hint('Repete sozinha e aparece em HOJE e AGENDA. Ao concluir, registra o treino.'),
           if (_kind == TaskKind.single) _dueSection(today),
           if (_kind == TaskKind.recurring) _recurrenceSection(),
           if (showTime) _timeSection(),

@@ -577,3 +577,41 @@ class FieldLabel extends StatelessWidget {
     );
   }
 }
+
+/// Tela vazia: globo, título e dica, centralizados e com quebra de linha
+/// (a largura total evita que o texto fique encostado ou cortado na borda).
+class EmptyState extends StatelessWidget {
+  const EmptyState({super.key, required this.title, required this.subtitle, this.globe = 132});
+
+  final String title;
+  final String subtitle;
+  final double globe;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.pal;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 40, 24, 0),
+      child: SizedBox(
+        width: double.infinity,
+        child: Column(
+          children: [
+            WireGlobe(size: globe),
+            const SizedBox(height: 20),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: p.fg, fontSize: 15),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: p.dim, fontSize: 13, height: 1.4),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

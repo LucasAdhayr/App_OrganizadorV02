@@ -119,19 +119,6 @@ class EmptyHint extends StatelessWidget {
   final String subtitle;
 
   @override
-  Widget build(BuildContext context) {
-    final p = context.pal;
-    return Padding(
-      padding: const EdgeInsets.only(top: 40),
-      child: Column(
-        children: [
-          const WireGlobe(size: 110),
-          const SizedBox(height: 16),
-          Text(title, style: TextStyle(color: p.fg, fontSize: 15)),
-          const SizedBox(height: 6),
-          Text(subtitle, style: TextStyle(color: p.dim, fontSize: 13), textAlign: TextAlign.center),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) =>
+      EmptyState(title: title, subtitle: subtitle, globe: 110);
 }

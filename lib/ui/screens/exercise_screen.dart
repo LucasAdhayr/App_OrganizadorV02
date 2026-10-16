@@ -3,10 +3,14 @@ import 'package:flutter/services.dart';
 
 import '../../app/app_state.dart';
 import '../../core/entry.dart';
+import '../../core/labels.dart';
+import '../../core/models.dart';
+import '../../core/dates.dart';
 import '../actions.dart';
 import '../sheets.dart';
 import '../term_widgets.dart';
 import 'entry_common.dart';
+import 'task_form_screen.dart';
 
 const List<String> _quick = ['Caminhada', 'Corrida', 'Musculação', 'Bicicleta', 'Alongamento'];
 
@@ -95,6 +99,44 @@ Future<void> showExerciseSheet(BuildContext host, {Entry? edit}) {
   });
 }
 
+/// Abre o formulário de uma nova rotina de exercício (repete e avisa 1 h antes).
+Future<void> newExerciseRoutine(BuildContext context) => Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(builder: (_) => const TaskFormScreen(module: kModExercise)),
+    );
+
+/// "+" > EXERCÍCIO: rotina que se repete ou treino já feito.
+Future<void> addExerciseChoice(BuildContext context) async {
+  final choice = await showTermSheet<String>(
+    context,
+    (c) => SheetFrame(
+      title: 'Exercício',
+      children: [
+        TermButton(
+          label: 'Nova rotina (repete)',
+          icon: Icons.repeat,
+          expand: true,
+          primary: true,
+          onPressed: () => Navigator.of(c).pop('routine'),
+        ),
+        gap(),
+        TermButton(
+          label: 'Registrar treino feito',
+          icon: Icons.check,
+          expand: true,
+          onPressed: () => Navigator.of(c).pop('log'),
+        ),
+        gap(),
+      ],
+    ),
+  );
+  if (choice == null || !context.mounted) return;
+  if (choice == 'routine') {
+    await newExerciseRoutine(context);
+  } else {
+    await showExerciseSheet(context);
+  }
+}
+
 /// EXERCÍCIOS: treinos e esportes, com o resumo da semana (começa na segunda).
 class ExerciseScreen extends StatelessWidget {
   const ExerciseScreen({super.key});
@@ -115,30 +157,73 @@ class ExerciseScreen extends StatelessWidget {
       groups.putIfAbsent(dayLabel(e.at, now), () => <Entry>[]).add(e);
     }
 
+    final routines = s.tasks.where((t) => t.module == kModExercise && s.isActive(t)).toList()
+      ..sort((a, b) {
+        final da = a.dueDate ?? DateTime(9999);
+        final db = b.dueDate ?? DateTime(9999);
+        final byDay = da.compareTo(db);
+        return byDay != 0 ? byDay : a.title.compareTo(b.title);
+      });
+
     return TermScaffold(
       title: 'Exercícios',
       bottom: Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-        child: TermButton(
-          label: 'Registrar exercício',
-          icon: Icons.add,
-          expand: true,
-          primary: true,
-          onPressed: () => showExerciseSheet(context),
+        child: Row(
+          children: [
+            Expanded(
+              child: TermButton(
+                label: 'Feito',
+                icon: Icons.check,
+                dense: true,
+                expand: true,
+                onPressed: () => showExerciseSheet(context),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              flex: 2,
+              child: TermButton(
+                label: 'Nova rotina',
+                icon: Icons.repeat,
+                expand: true,
+                primary: true,
+                onPressed: () => newExerciseRoutine(context),
+              ),
+            ),
+          ],
         ),
       ),
-      body: list.isEmpty
-          ? const EmptyHint('> Nenhum exercício ainda.', 'Registre treinos e esportes.')
+      body: (list.isEmpty && routines.isEmpty)
+          ? const EmptyHint(
+              '> Nenhum exercício ainda.',
+              'Crie uma rotina que se repete ou registre um treino feito.',
+            )
           : ListView(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
               children: [
-                Text(
+                if (routines.isNotEmpty) ...[
+                  SectionHeader('ROTINAS', count: routines.length),
+                  for (final t in routines)
+                    TermRow(
+                      key: ValueKey('routine-${t.id}-${t.due}-${t.snoozedUntil}'),
+                      title: t.title,
+                      subtitle: '${t.recurrence?.label ?? ''}'
+                          '${t.dueTime == null ? '' : ' · ${fmtTime(t.dueTime!)}'}',
+                      trailing: dueLabel(t, now).text,
+                      trailingColor: dueLabel(t, now).overdue ? p.warn : null,
+                      onTap: () => showTaskDetail(context, t),
+                    ),
+                  const SizedBox(height: 8),
+                ],
+                if (list.isNotEmpty)
+                  Text(
                   'Esta semana: ${week.length} ${week.length == 1 ? 'treino' : 'treinos'}'
                   '${weekMinutes > 0 ? ' · $weekMinutes min' : ''}',
                   style: TextStyle(color: p.fg, fontSize: 14),
                 ),
                 const SizedBox(height: 4),
-                const TermDivider(),
+                if (list.isNotEmpty) const TermDivider(),
                 for (final g in groups.entries) ...[
                   SectionHeader(g.key, count: g.value.length),
                   for (final e in g.value)

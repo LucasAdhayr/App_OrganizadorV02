@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart' show TimeOfDay;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:organizador/app/app_state.dart';
+import 'package:organizador/core/entry.dart';
 import 'package:organizador/core/models.dart';
 import 'package:organizador/core/reminders.dart';
 import 'package:organizador/services/notifier.dart';
@@ -126,6 +127,72 @@ void main() {
       for (var i = 1; i < r.length; i++) {
         expect(r[i].at.isBefore(r[i - 1].at), isFalse);
       }
+    });
+  });
+
+  group('água e exercícios', () {
+    // Terça 13/10/2026, 10:00 — 6h já passou; faltam 12h, 18h e 21h.
+    List<Reminder> water(int mlToday, {int goal = 2000}) => planReminders(
+          const [],
+          _now,
+          water: WaterPlan(
+            goalMl: goal,
+            mlOn: (d) => d.day == 13 ? mlToday : 0,
+          ),
+        ).where((r) => r.taskId == 'water').toList();
+
+    test('sem beber nada: avisos de 12h, 18h e 21h hoje', () {
+      final r = water(0).where((x) => x.at.day == 13).toList();
+      expect(r.map((x) => x.at.hour), [12, 18, 21]);
+      expect(r.first.body, 'Beba mais água');
+      expect(r.last.body, 'Ainda falta beber água');
+    });
+
+    test('30% atingido some o aviso das 12h; 70% some o das 18h; 100% some todos', () {
+      expect(water(600).where((x) => x.at.day == 13).map((x) => x.at.hour), [18, 21]);
+      expect(water(1400).where((x) => x.at.day == 13).map((x) => x.at.hour), [21]);
+      expect(water(2000).where((x) => x.at.day == 13), isEmpty);
+    });
+
+    test('dias seguintes começam com o aviso das 6h', () {
+      final r = water(0).where((x) => x.at.day == 14).toList();
+      expect(r.first.at.hour, 6);
+      expect(r.first.body, 'Beba seu primeiro gole d\'água');
+    });
+
+    test('rotina de exercício avisa 1 hora antes', () {
+      final t = Task(
+        id: 'ex',
+        title: 'Corrida',
+        kind: TaskKind.recurring,
+        createdAt: _now,
+        due: DateTime(2026, 10, 14),
+        time: const TimeOfDay(hour: 18, minute: 30),
+        recurrence: const Recurrence(type: RecurrenceType.daily),
+        module: kModExercise,
+      );
+      final r = planReminders([t], _now);
+      expect(r.first.at, DateTime(2026, 10, 14, 17, 30));
+      expect(r.first.body, contains('18:30'));
+    });
+
+    test('concluir rotina registra um treino; desfazer remove', () {
+      final s = AppState(clock: () => _now);
+      final t = Task(
+        id: 'ex',
+        title: 'Corrida',
+        kind: TaskKind.recurring,
+        createdAt: _now,
+        due: DateTime(2026, 10, 13),
+        time: const TimeOfDay(hour: 18, minute: 0),
+        recurrence: const Recurrence(type: RecurrenceType.daily),
+        module: kModExercise,
+      );
+      s.saveTask(t, isNew: true);
+      expect(s.complete(t), isTrue);
+      expect(s.entriesOf(kModExercise).single.text('kind'), 'Corrida');
+      s.undo();
+      expect(s.entriesOf(kModExercise), isEmpty);
     });
   });
 

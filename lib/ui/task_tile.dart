@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app/app_state.dart';
+import '../core/entry.dart';
 import '../core/labels.dart';
 import '../core/models.dart';
 import 'actions.dart';
@@ -25,6 +26,7 @@ class TaskTile extends StatelessWidget {
 
     final row = TermRow(
       title: t.title,
+      subtitle: t.module == kModExercise ? 'EXERCÍCIO' : null,
       leading: TermMarker(
         overdue: label.overdue,
         onTap: () => completeTask(context, t),

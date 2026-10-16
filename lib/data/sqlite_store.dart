@@ -16,7 +16,7 @@ class SqliteStore implements AppStore {
 
   final Database _db;
 
-  static const int _version = 3;
+  static const int _version = 4;
   static const String fileName = 'organizador.db';
 
   /// Abre (ou cria) o banco. [path] só é usado em testes.
@@ -50,7 +50,8 @@ class SqliteStore implements AppStore {
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
         snoozed_until INTEGER,
-        last_done_at INTEGER
+        last_done_at INTEGER,
+        module TEXT
       )
     ''');
     batch.execute('''
@@ -117,12 +118,14 @@ class SqliteStore implements AppStore {
   /// Migrações: nunca apagam dados existentes.
   /// v2: tabela de aniversários e datas.
   /// v3: tabela de registros dos módulos simples.
+  /// v4: coluna `module` nas tarefas (rotinas de exercício).
   static Future<void> _upgrade(Database db, int from, int to) async {
     if (from < 2) await db.execute(_datesSql);
     if (from < 3) {
       await db.execute(_entriesSql);
       await db.execute(_entriesIndexSql);
     }
+    if (from < 4) await db.execute('ALTER TABLE tasks ADD COLUMN module TEXT');
   }
 
   Future<void> close() => _db.close();

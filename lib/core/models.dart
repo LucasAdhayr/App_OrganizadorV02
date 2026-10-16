@@ -119,9 +119,15 @@ class Task {
     DateTime? updatedAt,
     this.snoozedUntil,
     this.lastDoneAt,
+    this.module,
   }) : updatedAt = updatedAt ?? createdAt;
 
   final String id;
+
+  /// Módulo dono da tarefa (null = tarefa comum). Rotinas de exercício têm
+  /// `exercicios`: aparecem em HOJE e AGENDA como as outras, mas pertencem ao
+  /// módulo e, ao concluir, registram um treino.
+  final String? module;
   String title;
   TaskKind kind;
   TaskStatus status;
@@ -162,6 +168,7 @@ class Task {
         updatedAt: updatedAt,
         snoozedUntil: snoozedUntil,
         lastDoneAt: lastDoneAt,
+        module: module,
       );
 
   void restoreFrom(Task o) {

@@ -56,6 +56,7 @@ Map<String, Object?> taskToMap(Task t) {
     'updated_at': _ms(t.updatedAt),
     'snoozed_until': t.snoozedUntil == null ? null : _ms(t.snoozedUntil!),
     'last_done_at': t.lastDoneAt == null ? null : _ms(t.lastDoneAt!),
+    'module': t.module,
   };
 }
 
@@ -89,6 +90,7 @@ Task taskFromMap(Map<String, Object?> m) {
     updatedAt: _fromMs(m['updated_at']! as int),
     snoozedUntil: snoozed == null ? null : _fromMs(snoozed),
     lastDoneAt: lastDone == null ? null : _fromMs(lastDone),
+    module: m['module'] as String?,
   );
 }
 

@@ -56,6 +56,9 @@ class _Undo {
   final Task task;
   final Task before;
   final int historyLength;
+
+  /// Treino registrado junto com a conclusão (desfazer remove).
+  Entry? entry;
 }
 
 /// Regras do app. Os dados vivem em memória (rápido para a interface) e cada
@@ -92,7 +95,14 @@ class AppState extends ChangeNotifier {
   }
 
   /// Lembretes que valem agora (usado também pela tela de diagnóstico).
-  List<Reminder> get plannedReminders => planReminders(tasks, now, dates: dates);
+  List<Reminder> get plannedReminders => planReminders(
+        tasks,
+        now,
+        dates: dates,
+        water: waterReminders
+            ? WaterPlan(goalMl: waterGoalMl, mlOn: waterMlOn)
+            : null,
+      );
 
   /// Refaz os lembretes agendados. Várias chamadas seguidas viram uma só.
   void replan() {
@@ -118,8 +128,14 @@ class AppState extends ChangeNotifier {
   EffectLevel effects = EffectLevel.soft;
   int reviewAfterDays = 14;
 
-  /// Meta diária de copos de água.
-  int waterGoal = 8;
+  /// Cada toque em "+" na água registra este tanto.
+  static const int waterStepMl = 200;
+
+  /// Meta diária de água, em mililitros (a interface mostra em litros).
+  int waterGoalMl = 2000;
+
+  /// Avisos de água (6h, 12h, 18h e 21h).
+  bool waterReminders = true;
 
   // Backup: quando foi o último, qual arquivo e de que tipo; e se o automático
   // está ligado.
@@ -186,7 +202,12 @@ class AppState extends ChangeNotifier {
     );
     reviewAfterDays =
         (int.tryParse(snap.settings['reviewAfterDays'] ?? '') ?? 14).clamp(3, 90);
-    waterGoal = (int.tryParse(snap.settings['waterGoal'] ?? '') ?? 8).clamp(1, 30);
+    // Versões antigas guardavam a meta em copos ("waterGoal"): 1 copo = 200 ml.
+    final legacyGlasses = int.tryParse(snap.settings['waterGoal'] ?? '');
+    waterGoalMl = (int.tryParse(snap.settings['waterGoalMl'] ?? '') ??
+            (legacyGlasses != null ? legacyGlasses * waterStepMl : 2000))
+        .clamp(500, 6000);
+    waterReminders = snap.settings['waterReminders'] != '0';
     // Adiamentos antigos (status "adiada") viram pendente + data adiada.
     for (final t in tasks) {
       if (t.status == TaskStatus.snoozed) {
@@ -208,7 +229,8 @@ class AppState extends ChangeNotifier {
           'palette': palette.id,
           'effects': effects.name,
           'reviewAfterDays': '$reviewAfterDays',
-          'waterGoal': '$waterGoal',
+          'waterGoalMl': '$waterGoalMl',
+          'waterReminders': waterReminders ? '1' : '0',
         },
       );
 
@@ -376,6 +398,11 @@ class AppState extends ChangeNotifier {
       history.removeRange(u.historyLength, history.length);
       _save((s) => s.deleteHistory(removed));
     }
+    final made = u.entry;
+    if (made != null) {
+      entries.remove(made);
+      _save((s) => s.deleteEntry(made.id));
+    }
     _saveTask(u.task);
     _undo = null;
     notifyListeners();
@@ -413,6 +440,19 @@ class AppState extends ChangeNotifier {
         t.status = TaskStatus.done;
     }
     _log(HistoryKind.done, t);
+    if (t.module == kModExercise) {
+      // Concluir a rotina registra o treino feito.
+      final e = Entry(
+        id: newId('e'),
+        module: kModExercise,
+        at: n,
+        data: <String, Object?>{'kind': t.title, 'notes': '', 'routine': t.id},
+        createdAt: n,
+      );
+      entries.add(e);
+      _save((s) => s.upsertEntry(e));
+      _undo?.entry = e;
+    }
     _saveTask(t);
     notifyListeners();
     return true;
@@ -536,6 +576,7 @@ class AppState extends ChangeNotifier {
     final e = Entry(id: newId('e'), module: module, at: at ?? n, data: data, createdAt: n);
     entries.add(e);
     _save((s) => s.upsertEntry(e));
+    replan();
     notifyListeners();
     return e;
   }
@@ -546,6 +587,7 @@ class AppState extends ChangeNotifier {
     if (data != null) e.data = data;
     e.updatedAt = now;
     _save((s) => s.upsertEntry(e));
+    replan();
     notifyListeners();
   }
 
@@ -554,6 +596,7 @@ class AppState extends ChangeNotifier {
     final i = entries.indexOf(e);
     if (i >= 0) entries.removeAt(i);
     _save((s) => s.deleteEntry(e.id));
+    replan();
     notifyListeners();
     return i;
   }
@@ -561,29 +604,39 @@ class AppState extends ChangeNotifier {
   void insertEntry(int index, Entry e) {
     entries.insert(index.clamp(0, entries.length), e);
     _save((s) => s.upsertEntry(e));
+    replan();
     notifyListeners();
   }
 
   // ---------------------------------------------------------------------- água
 
-  /// Copos registrados no dia [day].
-  int glassesOn(DateTime day) => entries
+  /// Água bebida no dia [day], em ml. Registros antigos (sem `ml`) valem 200.
+  int waterMlOn(DateTime day) => entries
       .where((e) => e.module == kModWater && sameDay(e.at, day))
-      .length;
+      .fold<int>(0, (sum, e) => sum + (e.number('ml') ?? waterStepMl));
 
-  void addGlass() => addEntry(kModWater);
+  Entry addWater() => addEntry(kModWater, data: <String, Object?>{'ml': waterStepMl});
 
-  /// Tira o último copo de hoje. Devolve o registro removido (ou null).
-  Entry? removeLastGlass() {
+  /// Tira o último registro de água de hoje. Devolve o removido (ou null).
+  Entry? removeLastWater() {
     final today = entriesOf(kModWater).where((e) => sameDay(e.at, now)).toList();
     if (today.isEmpty) return null;
     removeEntry(today.first);
     return today.first;
   }
 
-  void setWaterGoal(int glasses) {
-    waterGoal = glasses.clamp(1, 30);
-    _save((s) => s.setSetting('waterGoal', '$waterGoal'));
+  /// Meta em ml, entre 0,5 L e 6 L.
+  void setWaterGoalMl(int ml) {
+    waterGoalMl = ml.clamp(500, 6000);
+    _save((s) => s.setSetting('waterGoalMl', '$waterGoalMl'));
+    replan();
+    notifyListeners();
+  }
+
+  void setWaterReminders(bool on) {
+    waterReminders = on;
+    _save((s) => s.setSetting('waterReminders', on ? '1' : '0'));
+    replan();
     notifyListeners();
   }
 
@@ -872,7 +925,7 @@ class AppState extends ChangeNotifier {
     ]);
 
     for (var i = 0; i < 5; i++) {
-      addEntryRaw(kModWater, n.subtract(Duration(minutes: 40 * i)), {});
+      addEntryRaw(kModWater, n.subtract(Duration(minutes: 40 * i)), {'ml': 200});
     }
     addEntryRaw(kModFood, n.subtract(const Duration(hours: 3)),
         {'meal': 'almoco', 'text': 'Arroz, feijão, frango e salada'});

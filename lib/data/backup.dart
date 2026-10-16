@@ -16,7 +16,9 @@ const Set<String> kBackupSettingKeys = {
   'palette',
   'effects',
   'reviewAfterDays',
-  'waterGoal',
+  'waterGoal', // antigo (em copos); só lido ao restaurar backups velhos
+  'waterGoalMl',
+  'waterReminders',
 };
 
 /// Hora do backup automático.

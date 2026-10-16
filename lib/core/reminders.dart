@@ -1,4 +1,5 @@
 import 'dates.dart';
+import 'entry.dart';
 import 'models.dart';
 import 'special_dates.dart';
 
@@ -28,7 +29,30 @@ const int kSilenceEndHour = 5;
 const int kDateOnlyHour = 9;
 
 /// Máximo de lembretes agendados de uma vez (o Android limita alarmes).
-const int kMaxReminders = 50;
+const int kMaxReminders = 80;
+
+/// Lembretes de água: hora, fração da meta que já deveria ter sido atingida
+/// (o aviso só toca se ainda não foi) e a mensagem. Na primeira hora (fração
+/// 0) o aviso toca se ainda não houve nenhum registro no dia.
+const List<(int, double, String)> kWaterSlots = [
+  (6, 0.0, 'Beba seu primeiro gole d\'água'),
+  (12, 0.3, 'Beba mais água'),
+  (18, 0.7, 'Beba mais água'),
+  (21, 1.0, 'Ainda falta beber água'),
+];
+
+/// Quantos dias à frente os avisos de água ficam agendados.
+const int kWaterDaysAhead = 3;
+
+/// O que o planejador precisa saber da água.
+class WaterPlan {
+  const WaterPlan({required this.goalMl, required this.mlOn});
+
+  final int goalMl;
+
+  /// Quanto já foi bebido no dia dado (0 para dias futuros).
+  final int Function(DateTime day) mlOn;
+}
 
 int _fnv(String s) {
   var h = 0x811c9dc5;
@@ -54,6 +78,7 @@ List<Reminder> planReminders(
   Iterable<Task> tasks,
   DateTime now, {
   Iterable<SpecialDate> dates = const <SpecialDate>[],
+  WaterPlan? water,
   int limit = kMaxReminders,
 }) {
   final out = <Reminder>[];
@@ -83,7 +108,18 @@ List<Reminder> planReminders(
           : daysBetween(dateOnly(now), day) == 1
               ? 'Amanhã'
               : fmtDateShort(day);
-      add(t, 1, at, '$where às ${fmtTime(time)}');
+      if (t.module == kModExercise) {
+        // Rotina de exercício: avisa 1 hora antes.
+        final when = where == 'Hoje'
+            ? 'hoje'
+            : where == 'Amanhã'
+                ? 'amanhã'
+                : where;
+        add(t, 1, at.subtract(const Duration(hours: 1)),
+            'Começa $when às ${fmtTime(time)}');
+      } else {
+        add(t, 1, at, '$where às ${fmtTime(time)}');
+      }
     } else {
       add(t, 0, DateTime(day.year, day.month, day.day - 1, kDateOnlyHour), 'Vence amanhã');
       add(t, 1, DateTime(day.year, day.month, day.day, kDateOnlyHour), 'Vence hoje');
@@ -115,6 +151,29 @@ List<Reminder> planReminders(
 
     addDate(0, DateTime(day.year, day.month, day.day - 1, kDateOnlyHour), 'amanhã');
     addDate(1, DateTime(day.year, day.month, day.day, kDateOnlyHour), 'hoje');
+  }
+
+  // Água: 6h, 12h, 18h e 21h, só se a meta parcial ainda não foi atingida. Como
+  // o plano é refeito a cada registro de água, o aviso some assim que você bebe.
+  if (water != null) {
+    for (var d = 0; d < kWaterDaysAhead; d++) {
+      final day = DateTime(today.year, today.month, today.day + d);
+      final ml = d == 0 ? water.mlOn(day) : 0;
+      for (var i = 0; i < kWaterSlots.length; i++) {
+        final (hour, fraction, message) = kWaterSlots[i];
+        final due = fraction == 0 ? ml == 0 : ml < fraction * water.goalMl;
+        if (!due) continue;
+        final at = DateTime(day.year, day.month, day.day, hour);
+        if (!at.isAfter(now)) continue;
+        out.add(Reminder(
+          id: 2000000000 + (day.difference(DateTime(2020)).inDays % 100000) * 10 + i,
+          taskId: 'water',
+          at: at,
+          title: 'Água',
+          body: message,
+        ));
+      }
+    }
   }
 
   out.sort((a, b) => a.at.compareTo(b.at));

@@ -25,7 +25,6 @@ class AgendaScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
-    final p = s.palette;
     final today = dateOnly(s.now);
 
     final items = s.tasks.where((t) => s.isActive(t) && t.dueDate != null).toList()
@@ -46,20 +45,9 @@ class AgendaScreen extends StatelessWidget {
     }
 
     if (groups.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.only(top: 48),
-        child: Column(
-          children: [
-            const WireGlobe(size: 132),
-            const SizedBox(height: 20),
-            Text('> Nada com data marcada.', style: TextStyle(color: p.fg, fontSize: 15)),
-            const SizedBox(height: 6),
-            Text(
-              'Tarefas com prazo ou repetição aparecem aqui.',
-              style: TextStyle(color: p.dim, fontSize: 13),
-            ),
-          ],
-        ),
+      return const EmptyState(
+        title: '> Nada com data marcada.',
+        subtitle: 'Tarefas com prazo ou repetição aparecem aqui.',
       );
     }
 

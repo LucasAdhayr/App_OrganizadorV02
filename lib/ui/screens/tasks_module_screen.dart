@@ -88,7 +88,9 @@ class _TasksModuleScreenState extends State<TasksModuleScreen> {
     final s = AppScope.of(context);
     final p = s.palette;
 
-    List<Task> pick(bool Function(Task) test) => s.tasks.where(test).toList()..sort(_byDue);
+    // Rotinas de módulos (ex.: exercícios) ficam no próprio módulo.
+    List<Task> pick(bool Function(Task) test) =>
+        s.tasks.where((t) => t.module == null && test(t)).toList()..sort(_byDue);
 
     final recurring = pick((t) => t.kind == TaskKind.recurring && s.isActive(t));
     final single = pick((t) => t.kind == TaskKind.single && s.isActive(t));

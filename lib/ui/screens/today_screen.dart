@@ -112,25 +112,8 @@ class _EmptyState extends StatelessWidget {
   final bool hasReview;
 
   @override
-  Widget build(BuildContext context) {
-    final p = context.pal;
-    return Padding(
-      padding: const EdgeInsets.only(top: 48),
-      child: Column(
-        children: [
-          const WireGlobe(size: 132),
-          const SizedBox(height: 20),
-          Text(
-            hasReview ? '> Nada para agora.' : '> Nada pendente agora.',
-            style: TextStyle(color: p.fg, fontSize: 15),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Toque em + para registrar algo.',
-            style: TextStyle(color: p.dim, fontSize: 13),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => EmptyState(
+        title: hasReview ? '> Nada para agora.' : '> Nada pendente agora.',
+        subtitle: 'Toque em + para registrar algo.',
+      );
 }

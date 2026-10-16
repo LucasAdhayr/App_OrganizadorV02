@@ -121,20 +121,9 @@ class DatesScreen extends StatelessWidget {
         ),
       ),
       body: list.isEmpty
-          ? Padding(
-              padding: const EdgeInsets.only(top: 48),
-              child: Column(
-                children: [
-                  const WireGlobe(size: 132),
-                  const SizedBox(height: 20),
-                  Text('> Nenhuma data guardada.', style: TextStyle(color: p.fg, fontSize: 15)),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Aniversários e datas que se repetem todo ano.',
-                    style: TextStyle(color: p.dim, fontSize: 13),
-                  ),
-                ],
-              ),
+          ? const EmptyState(
+              title: '> Nenhuma data guardada.',
+              subtitle: 'Aniversários e datas que se repetem todo ano.',
             )
           : ListView(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),

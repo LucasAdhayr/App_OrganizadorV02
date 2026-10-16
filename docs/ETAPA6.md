@@ -35,3 +35,10 @@ No celular:
 4. LIVROS: cadastre um livro com 300 páginas, atualize a página para 150, depois para 300 (deve virar LIDO).
 5. Backup > apague um registro > restaure: tudo deve voltar.
 6. Atualizar o app não deve apagar tarefas, notas nem datas (banco v2 > v3).
+
+## Correções pós-teste (16/10)
+
+- **Água:** passo fixo de 200 ml; meta diária em litros (0,5–6 L, passo de 250 ml). Avisos: 6h "Beba seu primeiro gole d'água"; 12h (<30%), 18h (<70%) "Beba mais água"; 21h (<100%) "Ainda falta beber água". Recalculados a cada gole registrado.
+- **Exercícios:** são rotinas (tarefas com `module = exercicios`) que se repetem (diário, semanal, a cada X dias, mensal), aparecem em HOJE/AGENDA com a etiqueta EXERCÍCIO e avisam 1 hora antes. Concluir registra um treino no módulo.
+- **Visual:** telas vazias (Agenda, Hoje, Datas, módulos) usam um único widget centralizado, sem texto cortado.
+- Banco migrou para a versão 4 (coluna `module` em tarefas).

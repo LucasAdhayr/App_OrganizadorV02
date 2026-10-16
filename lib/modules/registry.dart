@@ -60,9 +60,9 @@ Widget _foodScreen(BuildContext context) => const FoodScreen();
 Widget _exerciseScreen(BuildContext context) => const ExerciseScreen();
 Widget _booksScreen(BuildContext context) => const BooksScreen();
 
-Future<void> _logWater(BuildContext context) async => logGlass(context);
+Future<void> _logWater(BuildContext context) async => logWater(context);
 Future<void> _addMeal(BuildContext context) => showMealSheet(context);
-Future<void> _addExercise(BuildContext context) => showExerciseSheet(context);
+Future<void> _addExercise(BuildContext context) => addExerciseChoice(context);
 Future<void> _addBook(BuildContext context) => showBookSheet(context);
 
 const List<ModuleDef> kModules = [
@@ -107,7 +107,7 @@ const List<ModuleDef> kModules = [
     blurb: 'Hidratação sem medir ao mililitro',
     screen: _waterScreen,
     quickAdd: _logWater,
-    addLabel: 'COPO DE ÁGUA',
+    addLabel: 'ÁGUA (+200 ML)',
   ),
   ModuleDef(
     id: 'alimentacao',
@@ -122,7 +122,7 @@ const List<ModuleDef> kModules = [
     id: 'exercicios',
     label: 'EXERCÍCIOS',
     icon: Icons.fitness_center,
-    blurb: 'Treinos e esportes',
+    blurb: 'Rotinas que se repetem e treinos feitos',
     screen: _exerciseScreen,
     quickAdd: _addExercise,
     addLabel: 'EXERCÍCIO',
