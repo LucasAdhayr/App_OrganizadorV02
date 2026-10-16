@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart' show TimeOfDay;
 
 import '../core/dates.dart';
+import 'dart:convert';
+
+import '../core/entry.dart';
 import '../core/models.dart';
 import '../core/special_dates.dart';
 
@@ -156,5 +159,33 @@ SpecialDate dateFromMap(Map<String, Object?> m) {
     year: m['year'] as int?,
     notes: (m['notes'] as String?) ?? '',
     createdAt: _fromMs(m['created_at']! as int),
+  );
+}
+
+// ------------------------------------------------- registros dos módulos
+
+/// [data] vai como texto JSON no banco. No arquivo de backup vai como objeto
+/// (mais legível); [entryFromMap] aceita os dois jeitos.
+Map<String, Object?> entryToMap(Entry e) => <String, Object?>{
+      'id': e.id,
+      'module': e.module,
+      'at': _ms(e.at),
+      'data': jsonEncode(e.data),
+      'created_at': _ms(e.createdAt),
+      'updated_at': _ms(e.updatedAt),
+      'deleted_at': null,
+    };
+
+Entry entryFromMap(Map<String, Object?> m) {
+  final raw = m['data'];
+  final Object? decoded = raw is String ? jsonDecode(raw) : raw;
+  if (decoded is! Map) throw const FormatException('campo data inválido');
+  return Entry(
+    id: m['id']! as String,
+    module: m['module']! as String,
+    at: _fromMs(m['at']! as int),
+    data: Map<String, Object?>.from(decoded),
+    createdAt: _fromMs(m['created_at']! as int),
+    updatedAt: _fromMs(m['updated_at']! as int),
   );
 }

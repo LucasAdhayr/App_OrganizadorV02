@@ -192,8 +192,8 @@ Future<DateTime?> showSnoozeSheet(BuildContext context, {Task? task}) async {
 Future<void> showAddSheet(BuildContext context) async {
   final choice = await showTermSheet<String>(context, (c) {
     void pick(String id) => Navigator.of(c).pop(id);
-    final withForm = kModules.where((m) => m.addLabel != null && m.form != null);
-    final soon = kModules.where((m) => m.addLabel != null && m.form == null);
+    final withForm = kModules.where((m) => m.addLabel != null && m.canAdd);
+    final soon = kModules.where((m) => m.addLabel != null && !m.canAdd);
     return SheetFrame(
       title: 'O que você quer registrar?',
       children: [
@@ -232,7 +232,9 @@ Future<void> showAddSheet(BuildContext context) async {
     return;
   }
   final module = kModules.firstWhere((m) => m.id == choice);
-  if (module.form != null) {
+  if (module.quickAdd != null) {
+    await module.quickAdd!(context);
+  } else if (module.form != null) {
     await Navigator.of(context).push<void>(MaterialPageRoute<void>(builder: module.form!));
   }
 }

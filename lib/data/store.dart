@@ -1,3 +1,4 @@
+import '../core/entry.dart';
 import '../core/models.dart';
 import '../core/special_dates.dart';
 
@@ -8,6 +9,7 @@ class StoreSnapshot {
     this.history = const <HistoryEvent>[],
     this.notes = const <Note>[],
     this.dates = const <SpecialDate>[],
+    this.entries = const <Entry>[],
     this.settings = const <String, String>{},
   });
 
@@ -15,6 +17,7 @@ class StoreSnapshot {
   final List<HistoryEvent> history;
   final List<Note> notes;
   final List<SpecialDate> dates;
+  final List<Entry> entries;
   final Map<String, String> settings;
 }
 
@@ -44,6 +47,11 @@ abstract class AppStore {
   Future<void> upsertDate(SpecialDate date);
 
   Future<void> deleteDate(String id);
+
+  /// Registros dos módulos simples. Remoção lógica, como nas notas.
+  Future<void> upsertEntry(Entry entry);
+
+  Future<void> deleteEntry(String id);
 
   /// Restauração: troca tarefas, histórico e notas pelo conteúdo de [snap], de
   /// uma vez só (tudo ou nada). As configurações de [snap] são gravadas por

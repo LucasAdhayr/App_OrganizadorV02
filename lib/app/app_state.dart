@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../core/dates.dart';
+import '../core/entry.dart';
 import '../core/ids.dart';
 import '../core/models.dart';
 import '../core/reminders.dart';
@@ -111,10 +112,14 @@ class AppState extends ChangeNotifier {
   final List<HistoryEvent> history = [];
   final List<Note> notes = [];
   final List<SpecialDate> dates = [];
+  final List<Entry> entries = [];
 
   AppPalette palette = AppPalette.green;
   EffectLevel effects = EffectLevel.soft;
   int reviewAfterDays = 14;
+
+  /// Meta diária de copos de água.
+  int waterGoal = 8;
 
   // Backup: quando foi o último, qual arquivo e de que tipo; e se o automático
   // está ligado.
@@ -165,6 +170,9 @@ class AppState extends ChangeNotifier {
     dates
       ..clear()
       ..addAll(snap.dates);
+    entries
+      ..clear()
+      ..addAll(snap.entries);
 
     final paletteId = snap.settings['palette'];
     palette = AppPalette.all.firstWhere(
@@ -178,6 +186,7 @@ class AppState extends ChangeNotifier {
     );
     reviewAfterDays =
         (int.tryParse(snap.settings['reviewAfterDays'] ?? '') ?? 14).clamp(3, 90);
+    waterGoal = (int.tryParse(snap.settings['waterGoal'] ?? '') ?? 8).clamp(1, 30);
     // Adiamentos antigos (status "adiada") viram pendente + data adiada.
     for (final t in tasks) {
       if (t.status == TaskStatus.snoozed) {
@@ -194,10 +203,12 @@ class AppState extends ChangeNotifier {
         history: List.of(history),
         notes: List.of(notes),
         dates: List.of(dates),
+        entries: List.of(entries),
         settings: <String, String>{
           'palette': palette.id,
           'effects': effects.name,
           'reviewAfterDays': '$reviewAfterDays',
+          'waterGoal': '$waterGoal',
         },
       );
 
@@ -514,6 +525,68 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ----------------------------------------- registros dos módulos simples
+
+  /// Registros de um módulo, do mais recente para o mais antigo.
+  List<Entry> entriesOf(String module) =>
+      entries.where((e) => e.module == module).toList()..sort((a, b) => b.at.compareTo(a.at));
+
+  Entry addEntry(String module, {DateTime? at, Map<String, Object?>? data}) {
+    final n = now;
+    final e = Entry(id: newId('e'), module: module, at: at ?? n, data: data, createdAt: n);
+    entries.add(e);
+    _save((s) => s.upsertEntry(e));
+    notifyListeners();
+    return e;
+  }
+
+  /// Troca [at] e/ou [data] de um registro.
+  void updateEntry(Entry e, {DateTime? at, Map<String, Object?>? data}) {
+    if (at != null) e.at = at;
+    if (data != null) e.data = data;
+    e.updatedAt = now;
+    _save((s) => s.upsertEntry(e));
+    notifyListeners();
+  }
+
+  /// Remove o registro e devolve a posição, para o "desfazer".
+  int removeEntry(Entry e) {
+    final i = entries.indexOf(e);
+    if (i >= 0) entries.removeAt(i);
+    _save((s) => s.deleteEntry(e.id));
+    notifyListeners();
+    return i;
+  }
+
+  void insertEntry(int index, Entry e) {
+    entries.insert(index.clamp(0, entries.length), e);
+    _save((s) => s.upsertEntry(e));
+    notifyListeners();
+  }
+
+  // ---------------------------------------------------------------------- água
+
+  /// Copos registrados no dia [day].
+  int glassesOn(DateTime day) => entries
+      .where((e) => e.module == kModWater && sameDay(e.at, day))
+      .length;
+
+  void addGlass() => addEntry(kModWater);
+
+  /// Tira o último copo de hoje. Devolve o registro removido (ou null).
+  Entry? removeLastGlass() {
+    final today = entriesOf(kModWater).where((e) => sameDay(e.at, now)).toList();
+    if (today.isEmpty) return null;
+    removeEntry(today.first);
+    return today.first;
+  }
+
+  void setWaterGoal(int glasses) {
+    waterGoal = glasses.clamp(1, 30);
+    _save((s) => s.setSetting('waterGoal', '$waterGoal'));
+    notifyListeners();
+  }
+
   // ------------------------------------------------- aniversários e datas
 
   /// Datas ordenadas pela próxima ocorrência.
@@ -626,7 +699,7 @@ class AppState extends ChangeNotifier {
 
   /// Carrega os dados de exemplo (só com o app vazio) e grava no banco.
   void loadSampleData() {
-    if (tasks.isNotEmpty || notes.isNotEmpty || dates.isNotEmpty) return;
+    if (tasks.isNotEmpty || notes.isNotEmpty || dates.isNotEmpty || entries.isNotEmpty) return;
     _seed();
     for (final t in tasks) {
       _saveTask(t);
@@ -639,6 +712,9 @@ class AppState extends ChangeNotifier {
     }
     for (final d in dates) {
       _save((s) => s.upsertDate(d));
+    }
+    for (final e in entries) {
+      _save((s) => s.upsertEntry(e));
     }
     replan();
     notifyListeners();
@@ -794,5 +870,25 @@ class AppState extends ChangeNotifier {
         createdAt: n,
       ),
     ]);
+
+    for (var i = 0; i < 5; i++) {
+      addEntryRaw(kModWater, n.subtract(Duration(minutes: 40 * i)), {});
+    }
+    addEntryRaw(kModFood, n.subtract(const Duration(hours: 3)),
+        {'meal': 'almoco', 'text': 'Arroz, feijão, frango e salada'});
+    addEntryRaw(kModExercise, ago(2),
+        {'kind': 'Caminhada', 'minutes': 40, 'notes': ''});
+    addEntryRaw(kModBook, ago(20), {
+      'title': 'Hábitos Atômicos',
+      'author': 'James Clear',
+      'total': 320,
+      'page': 120,
+      'status': 'lendo',
+    });
+  }
+
+  /// Só para os dados de exemplo (não grava; loadSampleData grava depois).
+  void addEntryRaw(String module, DateTime at, Map<String, Object?> data) {
+    entries.add(Entry(id: newId('e'), module: module, at: at, data: data, createdAt: at));
   }
 }

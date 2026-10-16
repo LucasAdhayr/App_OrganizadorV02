@@ -1,6 +1,7 @@
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
+import '../core/entry.dart';
 import '../core/models.dart';
 import '../core/special_dates.dart';
 import 'codec.dart';
@@ -15,7 +16,7 @@ class SqliteStore implements AppStore {
 
   final Database _db;
 
-  static const int _version = 2;
+  static const int _version = 3;
   static const String fileName = 'organizador.db';
 
   /// Abre (ou cria) o banco. [path] só é usado em testes.
@@ -80,6 +81,8 @@ class SqliteStore implements AppStore {
       )
     ''');
     batch.execute(_datesSql);
+    batch.execute(_entriesSql);
+    batch.execute(_entriesIndexSql);
     await batch.commit(noResult: true);
   }
 
@@ -96,10 +99,30 @@ class SqliteStore implements AppStore {
       )
     ''';
 
+  static const String _entriesSql = '''
+      CREATE TABLE entries (
+        id TEXT PRIMARY KEY,
+        module TEXT NOT NULL,
+        at INTEGER NOT NULL,
+        data TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        deleted_at INTEGER
+      )
+    ''';
+
+  static const String _entriesIndexSql =
+      'CREATE INDEX idx_entries_module_at ON entries(module, at)';
+
   /// Migrações: nunca apagam dados existentes.
   /// v2: tabela de aniversários e datas.
+  /// v3: tabela de registros dos módulos simples.
   static Future<void> _upgrade(Database db, int from, int to) async {
     if (from < 2) await db.execute(_datesSql);
+    if (from < 3) {
+      await db.execute(_entriesSql);
+      await db.execute(_entriesIndexSql);
+    }
   }
 
   Future<void> close() => _db.close();
@@ -115,11 +138,17 @@ class SqliteStore implements AppStore {
     );
     final settings = await _db.query('settings');
     final dates = await _db.query('dates', orderBy: 'created_at ASC, rowid ASC');
+    final entries = await _db.query(
+      'entries',
+      where: 'deleted_at IS NULL',
+      orderBy: 'at ASC, rowid ASC',
+    );
     return StoreSnapshot(
       tasks: tasks.map(taskFromMap).toList(),
       history: history.map(eventFromMap).toList(),
       notes: notes.map(noteFromMap).toList(),
       dates: dates.map(dateFromMap).toList(),
+      entries: entries.map(entryFromMap).toList(),
       settings: <String, String>{
         for (final r in settings) r['key']! as String: r['value']! as String,
       },
@@ -171,6 +200,7 @@ class SqliteStore implements AppStore {
         await txn.delete('history');
         await txn.delete('notes');
         await txn.delete('dates');
+        await txn.delete('entries');
         final batch = txn.batch();
         for (final t in snap.tasks) {
           batch.insert('tasks', taskToMap(t), conflictAlgorithm: ConflictAlgorithm.replace);
@@ -183,6 +213,9 @@ class SqliteStore implements AppStore {
         }
         for (final d in snap.dates) {
           batch.insert('dates', dateToMap(d), conflictAlgorithm: ConflictAlgorithm.replace);
+        }
+        for (final e in snap.entries) {
+          batch.insert('entries', entryToMap(e), conflictAlgorithm: ConflictAlgorithm.replace);
         }
         for (final e in snap.settings.entries) {
           batch.insert(
@@ -203,6 +236,21 @@ class SqliteStore implements AppStore {
 
   @override
   Future<void> deleteDate(String id) => _db.delete('dates', where: 'id = ?', whereArgs: [id]);
+
+  @override
+  Future<void> upsertEntry(Entry entry) => _db.insert(
+        'entries',
+        entryToMap(entry),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+
+  @override
+  Future<void> deleteEntry(String id) => _db.update(
+        'entries',
+        <String, Object?>{'deleted_at': DateTime.now().millisecondsSinceEpoch},
+        where: 'id = ?',
+        whereArgs: [id],
+      );
 
   @override
   Future<void> setSetting(String key, String value) => _db.insert(

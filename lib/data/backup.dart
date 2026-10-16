@@ -12,7 +12,12 @@ const int kBackupVersion = 1;
 
 /// Configurações que entram no backup. As informações do próprio backup
 /// (último backup etc.) ficam de fora.
-const Set<String> kBackupSettingKeys = {'palette', 'effects', 'reviewAfterDays'};
+const Set<String> kBackupSettingKeys = {
+  'palette',
+  'effects',
+  'reviewAfterDays',
+  'waterGoal',
+};
 
 /// Hora do backup automático.
 const int kAutoBackupHour = 23;
@@ -37,6 +42,7 @@ class BackupData {
   int get noteCount => snapshot.notes.length;
   int get historyCount => snapshot.history.length;
   int get dateCount => snapshot.dates.length;
+  int get entryCount => snapshot.entries.length;
 }
 
 String encodeBackup(StoreSnapshot snap, DateTime now) {
@@ -49,6 +55,7 @@ String encodeBackup(StoreSnapshot snap, DateTime now) {
       'history': snap.history.length,
       'notes': snap.notes.length,
       'dates': snap.dates.length,
+      'entries': snap.entries.length,
     },
     'settings': <String, String>{
       for (final e in snap.settings.entries)
@@ -58,6 +65,9 @@ String encodeBackup(StoreSnapshot snap, DateTime now) {
     'history': snap.history.map(eventToMap).toList(),
     'notes': snap.notes.map(noteToMap).toList(),
     'dates': snap.dates.map(dateToMap).toList(),
+    'entries': [
+      for (final e in snap.entries) <String, Object?>{...entryToMap(e), 'data': e.data},
+    ],
   };
   return const JsonEncoder.withIndent('  ').convert(map);
 }
@@ -125,6 +135,7 @@ BackupData decodeBackup(String text) {
       notes: rows('notes', noteFromMap),
       // Backups antigos (sem aniversários) continuam valendo.
       dates: rows('dates', dateFromMap, optional: true),
+      entries: rows('entries', entryFromMap, optional: true),
       settings: settings,
     ),
   );

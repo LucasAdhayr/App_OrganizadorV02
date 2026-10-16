@@ -1,3 +1,4 @@
+import 'package:organizador/core/entry.dart';
 import 'package:organizador/core/models.dart';
 import 'package:organizador/core/special_dates.dart';
 import 'package:organizador/data/store.dart';
@@ -8,6 +9,7 @@ class FakeStore implements AppStore {
   final Map<String, HistoryEvent> history = {};
   final Map<String, Note> notes = {};
   final Map<String, SpecialDate> dates = {};
+  final Map<String, Entry> entries = {};
   final Set<String> deletedNotes = {};
   final Map<String, String> settings = {};
 
@@ -17,6 +19,7 @@ class FakeStore implements AppStore {
         history: history.values.toList(),
         notes: notes.values.where((n) => !deletedNotes.contains(n.id)).toList(),
         dates: dates.values.toList(),
+        entries: entries.values.toList(),
         settings: Map.of(settings),
       );
 
@@ -50,6 +53,9 @@ class FakeStore implements AppStore {
       ..clear()
       ..addEntries(snap.notes.map((n) => MapEntry(n.id, n)));
     deletedNotes.clear();
+    entries
+      ..clear()
+      ..addEntries(snap.entries.map((e) => MapEntry(e.id, e)));
     dates
       ..clear()
       ..addEntries(snap.dates.map((d) => MapEntry(d.id, d)));
@@ -61,6 +67,12 @@ class FakeStore implements AppStore {
 
   @override
   Future<void> deleteDate(String id) async => dates.remove(id);
+
+  @override
+  Future<void> upsertEntry(Entry entry) async => entries[entry.id] = entry;
+
+  @override
+  Future<void> deleteEntry(String id) async => entries.remove(id);
 
   @override
   Future<void> setSetting(String key, String value) async => settings[key] = value;
