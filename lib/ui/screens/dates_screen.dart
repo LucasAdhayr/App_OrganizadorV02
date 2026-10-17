@@ -103,7 +103,6 @@ class DatesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
-    final p = s.palette;
     final list = s.datesByNext();
 
     return TermScaffold(

@@ -153,7 +153,7 @@ void main() {
     });
 
     test('lembretes consideram as datas', () {
-      final s = AppState(clock: () => _now);
+      final s = AppState(clock: () => _now)..waterReminders = false;
       s.saveDate(_d('a', 10, 20), isNew: true);
       expect(s.plannedReminders.length, 2);
     });

@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import '../../app/app_state.dart';
 import '../../core/entry.dart';
 import '../../core/labels.dart';
-import '../../core/models.dart';
 import '../../core/dates.dart';
 import '../actions.dart';
 import '../sheets.dart';

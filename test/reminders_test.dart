@@ -199,7 +199,9 @@ void main() {
   group('AppState + notificações', () {
     test('salvar, adiar e concluir refazem os lembretes', () async {
       final n = _FakeNotifier();
-      final s = AppState(clock: () => _now)..attachNotifier(n);
+      final s = AppState(clock: () => _now)
+        ..waterReminders = false
+        ..attachNotifier(n);
       await Future<void>.delayed(Duration.zero);
       n.calls.clear();
 
