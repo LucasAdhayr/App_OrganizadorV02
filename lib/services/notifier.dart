@@ -60,11 +60,14 @@ class LocalNotifier implements Notifier {
     ),
   );
 
-  static const String _alarmChannelId = 'alarmes';
+  static const String _alarmChannelId = 'alarmes2';
   static const String _alarmChannelName = 'Alarmes';
   static const String _alarmChannelDesc =
       'Remédios e tarefas marcadas com alarme. Tocam como despertador.';
-  static const String _alarmSound = 'content://settings/system/alarm_alert';
+  // Som que vai dentro do app (android/app/src/main/res/raw/alarme_sirene.wav):
+  // não depende do som de alarme do sistema, que alguns celulares não expõem.
+  static const RawResourceAndroidNotificationSound _alarmSound =
+      RawResourceAndroidNotificationSound('alarme_sirene');
 
   static final Int64List _alarmVibration =
       Int64List.fromList(<int>[0, 800, 500, 800, 500, 800]);
@@ -83,7 +86,7 @@ class LocalNotifier implements Notifier {
       fullScreenIntent: true,
       visibility: NotificationVisibility.public,
       playSound: true,
-      sound: const UriAndroidNotificationSound(_alarmSound),
+      sound: _alarmSound,
       audioAttributesUsage: AudioAttributesUsage.alarm,
       enableVibration: true,
       vibrationPattern: _alarmVibration,
@@ -107,6 +110,8 @@ class LocalNotifier implements Notifier {
       ),
     );
     final android = n._android;
+    // Canal antigo (sem som próprio): removido para não aparecer duplicado.
+    await android?.deleteNotificationChannel('alarmes');
     await android?.createNotificationChannel(const AndroidNotificationChannel(
       _channelId,
       'Lembretes de tarefas',
@@ -119,7 +124,7 @@ class LocalNotifier implements Notifier {
       description: _alarmChannelDesc,
       importance: Importance.max,
       playSound: true,
-      sound: const UriAndroidNotificationSound(_alarmSound),
+      sound: _alarmSound,
       audioAttributesUsage: AudioAttributesUsage.alarm,
       enableVibration: true,
       vibrationPattern: _alarmVibration,

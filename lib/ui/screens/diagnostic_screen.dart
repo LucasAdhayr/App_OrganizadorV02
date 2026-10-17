@@ -148,7 +148,9 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
               'toque no cadeado.\n'
               '4. Notificações do app: tudo ligado, inclusive "Lembretes de tarefas" e '
               '"Alarmes" (esta com som e tela de bloqueio permitidos).\n'
-              '5. Alarmes usam o volume de ALARME do celular: confira que não está no mudo.',
+              '5. Alarmes usam o volume de ALARME do celular: confira que não está no mudo.\n'
+              '6. Sem som? Notificações do app > "Alarmes" > som: deve estar ligado '
+              '(não pode estar em "Silencioso").',
               style: dim,
             ),
           ],
