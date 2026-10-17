@@ -153,25 +153,60 @@ class LocalNotifier implements Notifier {
   Future<void> replace(List<Reminder> reminders) {
     // Em fila: duas trocas seguidas nunca se misturam.
     _queue = _queue.then((_) async {
+      String? firstError;
       try {
-        await _plugin.cancelAll();
+        final wanted = <int>{for (final r in reminders) r.id};
+
+        // 1) Remove só o que sobrou (tarefa apagada, horário mudado...). Nada de
+        //    "cancelar tudo": isso derrubava um alarme que estivesse tocando
+        //    e deixava o celular sem avisos durante a troca.
+        final pending = await _plugin.pendingNotificationRequests();
+        for (final p in pending) {
+          if (wanted.contains(p.id) || p.id == _testId || p.id == _testId + 1) continue;
+          try {
+            await _plugin.cancel(p.id);
+          } catch (e) {
+            firstError ??= '$e';
+          }
+        }
+
+        // 2) Agenda (ou atualiza, se o número já existe). Uma falha não impede
+        //    os demais.
         final mode = await _mode();
         final alarmMode = await _mode(alarm: true);
         for (final r in reminders) {
-          await _plugin.zonedSchedule(
-            r.id,
-            r.title,
-            r.body,
-            _instant(r.at),
-            r.alarm ? _alarmDetails : _details,
-            androidScheduleMode: r.alarm ? alarmMode : mode,
-            payload: r.taskId,
-          );
+          try {
+            await _plugin.zonedSchedule(
+              r.id,
+              r.title,
+              r.body,
+              _instant(r.at),
+              r.alarm ? _alarmDetails : _details,
+              androidScheduleMode: r.alarm ? alarmMode : mode,
+              payload: r.taskId,
+            );
+          } catch (e) {
+            // Alarme exato negado de última hora: tenta o modo aproximado em
+            // vez de ficar sem aviso nenhum.
+            try {
+              await _plugin.zonedSchedule(
+                r.id,
+                r.title,
+                r.body,
+                _instant(r.at),
+                r.alarm ? _alarmDetails : _details,
+                androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+                payload: r.taskId,
+              );
+            } catch (e2) {
+              firstError ??= '$e2';
+            }
+          }
         }
-        _lastError = null;
       } catch (e) {
-        _lastError = '$e';
+        firstError ??= '$e';
       }
+      _lastError = firstError;
     });
     return _queue;
   }

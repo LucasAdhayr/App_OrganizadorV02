@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/app_state.dart';
 import '../../core/dates.dart';
+import '../../services/device_settings.dart';
 import '../../services/notifier.dart';
 import '../actions.dart';
 import '../term_widgets.dart';
@@ -18,20 +19,40 @@ class DiagnosticScreen extends StatefulWidget {
   State<DiagnosticScreen> createState() => _DiagnosticScreenState();
 }
 
-class _DiagnosticScreenState extends State<DiagnosticScreen> {
+class _DiagnosticScreenState extends State<DiagnosticScreen> with WidgetsBindingObserver {
   NotifierStatus? _status;
+  bool? _battery;
   bool _busy = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _refresh();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  // Voltando das configurações do sistema, a situação é lida de novo.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _refresh();
   }
 
   Future<void> _refresh() async {
     final n = widget.notifier;
     final st = n == null ? null : await n.status();
-    if (mounted) setState(() => _status = st);
+    final battery = await DeviceSettings.batteryUnrestricted();
+    if (mounted) {
+      setState(() {
+        _status = st;
+        _battery = battery;
+      });
+    }
   }
 
   Future<void> _run(Future<void> Function(Notifier n) op, String done) async {
@@ -73,6 +94,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
             const FieldLabel('Situação'),
             Text('Notificações permitidas: ${_flag(st?.notificationsEnabled)}', style: body),
             Text('Alarmes exatos: ${_flag(st?.exactAlarms)}', style: body),
+            Text('Sem restrição de bateria: ${_flag(_battery)}', style: body),
             Text('Agendados no sistema: ${st?.pending ?? '...'}', style: body),
             Text('Planejados pelo app: ${planned.length}', style: body),
             if (st?.error != null) Text('[!] Último erro: ${st!.error}', style: body),
@@ -99,6 +121,36 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
               label: 'Liberar alarmes exatos',
               expand: true,
               onPressed: _busy ? null : () => _run((x) => x.requestExactAlarms(), 'Pedido enviado.'),
+            ),
+            const SizedBox(height: 8),
+            TermButton(
+              label: 'Tirar restrição de bateria',
+              expand: true,
+              onPressed: _busy
+                  ? null
+                  : () async {
+                      await DeviceSettings.openBatterySettings();
+                    },
+            ),
+            const SizedBox(height: 8),
+            TermButton(
+              label: 'Som e volume do canal Alarmes',
+              expand: true,
+              onPressed: _busy
+                  ? null
+                  : () async {
+                      await DeviceSettings.openChannelSettings('alarmes2');
+                    },
+            ),
+            const SizedBox(height: 8),
+            TermButton(
+              label: 'Configurações do app (início automático)',
+              expand: true,
+              onPressed: _busy
+                  ? null
+                  : () async {
+                      await DeviceSettings.openAppSettings();
+                    },
             ),
             const SizedBox(height: 8),
             TermButton(

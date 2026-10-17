@@ -39,7 +39,12 @@ class BackupManager {
   /// aberto. Só faz algo se já passou das 23:00 sem backup desde então.
   Future<void> runAutoIfDue() async {
     if (!state.autoBackup || _busy) return;
-    if (state.tasks.isEmpty && state.notes.isEmpty && state.history.isEmpty) return;
+    final empty = state.tasks.isEmpty &&
+        state.notes.isEmpty &&
+        state.history.isEmpty &&
+        state.dates.isEmpty &&
+        state.entries.isEmpty;
+    if (empty) return;
     final now = state.now;
     if (!autoBackupDue(now, state.lastBackupAt)) return;
     final failed = _failedAt;

@@ -100,14 +100,54 @@ void main() {
       expect(r, isEmpty);
     });
 
-    test('recorrente: só a ocorrência atual', () {
+    test('recorrente diária: a atual e as dos próximos 7 dias', () {
       final r = planReminders([
         _t('a',
             kind: TaskKind.recurring,
             due: DateTime(2026, 10, 14),
             time: const TimeOfDay(hour: 8, minute: 0)),
       ], _now);
-      expect(r.length, 1);
+      expect(r.map((x) => x.at.day), [14, 15, 16, 17, 18, 19, 20]);
+      expect(r.every((x) => x.at.hour == 8), isTrue);
+      expect(r.map((x) => x.id).toSet().length, r.length);
+    });
+
+    test('recorrente atrasada: não avisa o passado, mas avisa os próximos dias', () {
+      final r = planReminders([
+        _t('a',
+            kind: TaskKind.recurring,
+            due: DateTime(2026, 10, 10),
+            time: const TimeOfDay(hour: 8, minute: 0)),
+      ], _now);
+      expect(r.first.at, DateTime(2026, 10, 14, 8));
+      expect(r.length, 7);
+    });
+
+    test('recorrente semanal só avisa nos dias da regra', () {
+      // Segundas e quintas (1 e 4). 13/10/2026 é terça.
+      final t = Task(
+        id: 'w',
+        title: 'Aula',
+        kind: TaskKind.recurring,
+        createdAt: _now,
+        due: DateTime(2026, 10, 15),
+        time: const TimeOfDay(hour: 19, minute: 0),
+        recurrence: const Recurrence(type: RecurrenceType.weekdays, weekdays: {1, 4}),
+      );
+      final r = planReminders([t], _now);
+      expect(r.map((x) => x.at.weekday).toSet(), {1, 4});
+      expect(r.map((x) => x.at.day), [15, 19]);
+    });
+
+    test('tarefas diferentes nunca compartilham o número do aviso', () {
+      // Ids do mesmo tamanho: antes todos viravam o mesmo número.
+      final tasks = [
+        for (final id in ['t-aaaa', 't-aaab', 't-baaa', 't-zzzz'])
+          _t(id, due: DateTime(2026, 10, 14), time: const TimeOfDay(hour: 9, minute: 0)),
+      ];
+      final r = planReminders(tasks, _now);
+      expect(r.length, 4);
+      expect(r.map((x) => x.id).toSet().length, 4);
     });
 
     test('ids são estáveis e distintos por tipo', () {
@@ -119,7 +159,7 @@ void main() {
 
     test('respeita o limite, mantendo os mais próximos', () {
       final tasks = [
-        for (var i = 0; i < 80; i++)
+        for (var i = 0; i < 100; i++)
           _t('t$i',
               due: DateTime(2026, 10, 14),
               time: TimeOfDay(hour: 6 + i % 10, minute: i % 60)),
@@ -160,6 +200,27 @@ void main() {
       final r = water(0).where((x) => x.at.day == 14).toList();
       expect(r.first.at.hour, 6);
       expect(r.first.body, 'Beba seu primeiro gole d\'água');
+    });
+
+    test('alarmes de tarefa não são cortados pelo limite dos comuns', () {
+      final tasks = [
+        for (var i = 0; i < kMaxReminders + 10; i++)
+          _t('c$i',
+              due: DateTime(2026, 10, 14),
+              time: TimeOfDay(hour: 6 + i % 10, minute: i % 60)),
+        Task(
+          id: 'alarme',
+          title: 'Importante',
+          kind: TaskKind.single,
+          createdAt: _now,
+          due: DateTime(2026, 10, 30),
+          time: const TimeOfDay(hour: 9, minute: 0),
+          alarm: true,
+        ),
+      ];
+      final r = planReminders(tasks, _now);
+      expect(r.where((x) => x.alarm).length, 1);
+      expect(r.length, kMaxReminders + 1);
     });
 
     test('rotina de exercício avisa 1 hora antes', () {
@@ -219,6 +280,25 @@ void main() {
       s.discard(t);
       await Future<void>.delayed(Duration.zero);
       expect(n.calls.last, isEmpty);
+    });
+
+    test('plano igual não é reenviado; force reenvia', () async {
+      final n = _FakeNotifier();
+      final s = AppState(clock: () => _now)
+        ..waterReminders = false
+        ..attachNotifier(n);
+      s.saveTask(
+          _t('a', due: DateTime(2026, 10, 15), time: const TimeOfDay(hour: 9, minute: 0)),
+          isNew: true);
+      await Future<void>.delayed(Duration.zero);
+      final first = n.calls.length;
+      s.replan();
+      s.replan();
+      await Future<void>.delayed(Duration.zero);
+      expect(n.calls.length, first);
+      s.replan(force: true);
+      await Future<void>.delayed(Duration.zero);
+      expect(n.calls.length, first + 1);
     });
 
     test('vários salvamentos seguidos viram uma troca só', () async {

@@ -5,6 +5,8 @@ import android.content.ContentValues
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.os.PowerManager
+import android.provider.Settings
 import android.provider.MediaStore
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -20,6 +22,47 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        // Atalhos de configuração do sistema que os alarmes precisam (bateria e som).
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "br.pessoal.organizador/device")
+            .setMethodCallHandler { call, result ->
+                try {
+                    when (call.method) {
+                        "batteryUnrestricted" -> {
+                            val pm = getSystemService(POWER_SERVICE) as PowerManager
+                            result.success(pm.isIgnoringBatteryOptimizations(packageName))
+                        }
+                        "openBatterySettings" -> {
+                            openFirst(
+                                Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                                    .setData(Uri.parse("package:$packageName")),
+                                Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS),
+                                appDetails(),
+                            )
+                            result.success(null)
+                        }
+                        "openAppSettings" -> {
+                            openFirst(appDetails())
+                            result.success(null)
+                        }
+                        "openChannelSettings" -> {
+                            val channel = call.argument<String>("channel") ?: ""
+                            openFirst(
+                                Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
+                                    .putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+                                    .putExtra(Settings.EXTRA_CHANNEL_ID, channel),
+                                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                                    .putExtra(Settings.EXTRA_APP_PACKAGE, packageName),
+                                appDetails(),
+                            )
+                            result.success(null)
+                        }
+                        else -> result.notImplemented()
+                    }
+                } catch (e: Exception) {
+                    result.error("device", e.message ?: e.toString(), null)
+                }
+            }
+
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "br.pessoal.organizador/backup")
             .setMethodCallHandler { call, result ->
                 try {
@@ -41,6 +84,21 @@ class MainActivity : FlutterActivity() {
                     result.error("backup", e.message ?: e.toString(), null)
                 }
             }
+    }
+
+    private fun appDetails(): Intent =
+        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(Uri.parse("package:$packageName"))
+
+    /// Abre a primeira tela de configuração que o celular souber abrir.
+    private fun openFirst(vararg intents: Intent) {
+        for (i in intents) {
+            try {
+                startActivity(i)
+                return
+            } catch (e: Exception) {
+                // tenta a próxima
+            }
+        }
     }
 
     /// Seletor de documentos do sistema: devolve os bytes do arquivo escolhido

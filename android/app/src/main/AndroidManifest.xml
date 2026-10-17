@@ -7,6 +7,8 @@
     <!-- Alarmes: acender a tela e aparecer sobre a tela de bloqueio. -->
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <!-- Pedir para o app não ser contido pela economia de bateria (alarmes). -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
     <application
         android:label="Organizador"
         android:name="${applicationName}"

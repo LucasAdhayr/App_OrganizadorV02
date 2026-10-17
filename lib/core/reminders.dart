@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart' show TimeOfDay;
+
 import 'dates.dart';
 import 'entry.dart';
 import 'medication.dart';
@@ -33,8 +35,17 @@ const int kSilenceEndHour = 5;
 /// Hora dos lembretes de tarefas que só têm data.
 const int kDateOnlyHour = 9;
 
-/// Máximo de lembretes agendados de uma vez (o Android limita alarmes).
+/// Máximo de lembretes comuns agendados de uma vez (o Android limita alarmes).
 const int kMaxReminders = 80;
+
+/// Máximo de alarmes (remédios e tarefas com alarme). Têm limite próprio para
+/// nunca serem cortados por lembretes comuns.
+const int kMaxAlarms = 150;
+
+/// Quantos dias à frente as próximas ocorrências de tarefas recorrentes
+/// também ficam agendadas. Sem isso, a rotina de amanhã só teria aviso depois
+/// de você abrir o app e concluir a de hoje.
+const int kRecurDaysAhead = 7;
 
 /// Lembretes de água: hora, fração da meta que já deveria ter sido atingida
 /// (o aviso só toca se ainda não foi) e a mensagem. Na primeira hora (fração
@@ -64,6 +75,8 @@ class WaterPlan {
   final int Function(DateTime day) mlOn;
 }
 
+/// FNV-1a de 32 bits: o mesmo texto sempre dá o mesmo número, e textos
+/// diferentes (mesmo do mesmo tamanho) dão números diferentes.
 int _fnv(String s) {
   var h = 0x811c9dc5;
   for (final c in s.codeUnits) {
@@ -72,6 +85,10 @@ int _fnv(String s) {
   }
   return h;
 }
+
+int _ordinal(DateTime day) => DateTime.utc(day.year, day.month, day.day)
+    .difference(DateTime.utc(2020))
+    .inDays;
 
 DateTime _applySilence(DateTime at) =>
     at.hour < kSilenceEndHour ? DateTime(at.year, at.month, at.day, kSilenceEndHour) : at;
@@ -82,8 +99,11 @@ DateTime _applySilence(DateTime at) =>
 /// - Com horário: um lembrete na hora marcada.
 /// - Só com data: um na véspera às 09:00 e outro no dia às 09:00.
 /// - Adiada: vale o horário do adiamento (a data efetiva da tarefa).
-/// - Recorrente: só a ocorrência atual; ao concluir, o plano é refeito.
+/// - Recorrente: a ocorrência atual e as dos próximos [kRecurDaysAhead] dias.
 /// - Sem data (reutilizável) e tarefas encerradas: nenhum.
+/// - Remédios: alarme em todos os horários pelos próximos [kMedDaysAhead] dias.
+///
+/// Lembretes comuns respeitam [limit]; alarmes têm o limite [kMaxAlarms].
 List<Reminder> planReminders(
   Iterable<Task> tasks,
   DateTime now, {
@@ -92,19 +112,47 @@ List<Reminder> planReminders(
   Iterable<Medication> meds = const <Medication>[],
   int limit = kMaxReminders,
 }) {
-  final out = <Reminder>[];
+  final today = dateOnly(now);
+  final normal = <Reminder>[];
+  final alarms = <Reminder>[];
 
-  void add(Task t, int slot, DateTime at, String body) {
-    final when = _applySilence(at);
-    if (!when.isAfter(now)) return;
-    out.add(Reminder(
-      id: (_fnv(t.id) & 0x1fffffff) * 4 + slot,
-      taskId: t.id,
-      at: when,
-      title: t.title,
-      body: body,
-      alarm: t.alarm,
-    ));
+  void emit(Reminder r) => (r.alarm ? alarms : normal).add(r);
+
+  // [primary]: ocorrência atual da tarefa (id estável por tarefa e posição).
+  // As demais (recorrentes futuras) têm id por dia.
+  void planDay(Task t, DateTime day, TimeOfDay? time, {required bool primary}) {
+    int idFor(int slot) => primary
+        ? (_fnv(t.id) & 0x1fffffff) * 4 + slot
+        : (_fnv('r:${t.id}:${_ordinal(day)}:$slot') & 0x1fffffff) + 1000000000;
+
+    void add(int slot, DateTime at, String body) {
+      final when = _applySilence(at);
+      if (!when.isAfter(now)) return;
+      emit(Reminder(
+        id: idFor(slot),
+        taskId: t.id,
+        at: when,
+        title: t.title,
+        body: body,
+        alarm: t.alarm,
+      ));
+    }
+
+    if (time != null) {
+      final at = DateTime(day.year, day.month, day.day, time.hour, time.minute);
+      final diff = daysBetween(today, day);
+      final where = diff == 0 ? 'Hoje' : diff == 1 ? 'Amanhã' : fmtDateShort(day);
+      if (t.module == kModExercise) {
+        // Rotina de exercício: avisa 1 hora antes.
+        add(1, at.subtract(const Duration(hours: 1)),
+            'Começa ${where.toLowerCase()} às ${fmtTime(time)}');
+      } else {
+        add(1, at, '$where às ${fmtTime(time)}');
+      }
+    } else {
+      add(0, DateTime(day.year, day.month, day.day - 1, kDateOnlyHour), 'Vence amanhã');
+      add(1, DateTime(day.year, day.month, day.day, kDateOnlyHour), 'Vence hoje');
+    }
   }
 
   for (final t in tasks) {
@@ -112,47 +160,36 @@ List<Reminder> planReminders(
     final date = t.dueDate;
     if (date == null) continue;
     final day = dateOnly(date);
-    final time = t.dueTime;
-    if (time != null) {
-      final at = DateTime(day.year, day.month, day.day, time.hour, time.minute);
-      final where = daysBetween(dateOnly(now), day) == 0
-          ? 'Hoje'
-          : daysBetween(dateOnly(now), day) == 1
-              ? 'Amanhã'
-              : fmtDateShort(day);
-      if (t.module == kModExercise) {
-        // Rotina de exercício: avisa 1 hora antes.
-        final when = where == 'Hoje'
-            ? 'hoje'
-            : where == 'Amanhã'
-                ? 'amanhã'
-                : where;
-        add(t, 1, at.subtract(const Duration(hours: 1)),
-            'Começa $when às ${fmtTime(time)}');
-      } else {
-        add(t, 1, at, '$where às ${fmtTime(time)}');
+    planDay(t, day, t.dueTime, primary: true);
+
+    final rule = t.recurrence;
+    if (t.kind == TaskKind.recurring && rule != null) {
+      final horizon = DateTime(today.year, today.month, today.day + kRecurDaysAhead);
+      var from = day.isAfter(today) ? day : today;
+      for (var i = 0; i < kRecurDaysAhead + 1; i++) {
+        final next = rule.nextAfter(from);
+        if (next.isAfter(horizon)) break;
+        planDay(t, next, t.time, primary: false);
+        from = next;
       }
-    } else {
-      add(t, 0, DateTime(day.year, day.month, day.day - 1, kDateOnlyHour), 'Vence amanhã');
-      add(t, 1, DateTime(day.year, day.month, day.day, kDateOnlyHour), 'Vence hoje');
     }
   }
 
   // Aniversários e datas: véspera e dia, às 09:00, na próxima ocorrência.
-  final today = dateOnly(now);
   for (final d in dates) {
     final day = d.next(today);
     final base = (_fnv('d:${d.id}') & 0x1fffffff) * 4;
+    final age = d.turningAge(today);
     final what = switch (d.kind) {
-      DateKind.birthday => d.turningAge(today) != null && d.turningAge(today)! > 0
-          ? 'Faz ${d.turningAge(today)} ${d.turningAge(today) == 1 ? 'ano' : 'anos'}'
+      DateKind.birthday => age != null && age > 0
+          ? 'Faz $age ${age == 1 ? 'ano' : 'anos'}'
           : 'Aniversário',
       DateKind.date => 'Data importante',
     };
     void addDate(int slot, DateTime at, String when) {
       final shifted = _applySilence(at);
       if (!shifted.isAfter(now)) return;
-      out.add(Reminder(
+      normal.add(Reminder(
         id: base + slot,
         taskId: 'date:${d.id}',
         at: shifted,
@@ -177,8 +214,8 @@ List<Reminder> planReminders(
         if (!due) continue;
         final at = DateTime(day.year, day.month, day.day, hour);
         if (!at.isAfter(now)) continue;
-        out.add(Reminder(
-          id: 2000000000 + (day.difference(DateTime(2020)).inDays % 100000) * 10 + i,
+        normal.add(Reminder(
+          id: 2000000000 + (_ordinal(day) % 100000) * 10 + i,
           taskId: 'water',
           at: at,
           title: 'Água',
@@ -188,10 +225,7 @@ List<Reminder> planReminders(
     }
   }
 
-  out.sort((a, b) => a.at.compareTo(b.at));
-  final capped = out.length <= limit ? out : out.sublist(0, limit);
-
-  // Remédios: sempre alarme, e nunca cortados pelo limite acima.
+  // Remédios: sempre alarme.
   for (final m in meds) {
     if (!m.active) continue;
     final ts = m.times;
@@ -200,8 +234,8 @@ List<Reminder> planReminders(
       for (var i = 0; i < ts.length; i++) {
         final at = _applySilence(DateTime(day.year, day.month, day.day, ts[i].hour, ts[i].minute));
         if (!at.isAfter(now)) continue;
-        capped.add(Reminder(
-          id: (_fnv('m:${m.id}:${day.difference(DateTime(2020)).inDays}:$i') & 0x1fffffff) + 1000000000,
+        alarms.add(Reminder(
+          id: (_fnv('m:${m.id}:${_ordinal(day)}:$i') & 0x1fffffff) + 1000000000,
           taskId: 'med:${m.id}',
           at: at,
           title: m.name,
@@ -211,6 +245,34 @@ List<Reminder> planReminders(
       }
     }
   }
-  capped.sort((a, b) => a.at.compareTo(b.at));
-  return capped;
+
+  int byTime(Reminder a, Reminder b) => a.at.compareTo(b.at);
+  normal.sort(byTime);
+  alarms.sort(byTime);
+  final all = <Reminder>[
+    ...(normal.length <= limit ? normal : normal.sublist(0, limit)),
+    ...(alarms.length <= kMaxAlarms ? alarms : alarms.sublist(0, kMaxAlarms)),
+  ]..sort(byTime);
+
+  // Garantia final: dois lembretes nunca ficam com o mesmo número (o segundo
+  // apagaria o primeiro no sistema). Em colisão, o número é deslocado.
+  final seen = <int>{};
+  final out = <Reminder>[];
+  for (final r in all) {
+    var id = r.id;
+    while (!seen.add(id)) {
+      id++;
+    }
+    out.add(id == r.id
+        ? r
+        : Reminder(
+            id: id,
+            taskId: r.taskId,
+            at: r.at,
+            title: r.title,
+            body: r.body,
+            alarm: r.alarm,
+          ));
+  }
+  return out;
 }

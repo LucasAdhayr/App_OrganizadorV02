@@ -106,13 +106,35 @@ class AppState extends ChangeNotifier {
         meds: medications,
       );
 
-  /// Refaz os lembretes agendados. Várias chamadas seguidas viram uma só.
-  void replan() {
-    if (_notifier == null || _replanQueued) return;
+  /// Resumo do último plano enviado ao sistema. Se o plano novo for igual, não
+  /// há nada a fazer (o relógio chama [replan] todo minuto).
+  String? _planSignature;
+
+  /// Refaz os lembretes agendados. Várias chamadas seguidas viram uma só, e
+  /// nada é enviado se o plano não mudou. [force] reenvia mesmo assim (ao
+  /// voltar para o app), comparando com o que o sistema realmente tem.
+  void replan({bool force = false}) {
+    if (_notifier == null) return;
+    if (force) _planSignature = null;
+    if (_replanQueued) return;
     _replanQueued = true;
     scheduleMicrotask(() {
       _replanQueued = false;
-      _notifier?.replace(plannedReminders);
+      final n = _notifier;
+      if (n == null) return;
+      final plan = plannedReminders;
+      final sig = plan
+          .map((r) => '${r.id}|${r.at.millisecondsSinceEpoch}|${r.alarm}|${r.title}|${r.body}')
+          .join('\n');
+      if (sig == _planSignature) return;
+      _planSignature = sig;
+      n.replace(plan).then((_) async {
+        // Se o sistema recusou algo, tenta de novo na próxima volta do relógio.
+        final st = await n.status();
+        if (st.error != null) _planSignature = null;
+      }).catchError((Object _) {
+        _planSignature = null;
+      });
     });
   }
 
