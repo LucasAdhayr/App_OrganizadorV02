@@ -1,0 +1,82 @@
+Erro data 16/10 21:12
+PS C:\dev\App_OrganizadorV02> git pull
+>> flutter pub get
+>> flutter analyze
+>> flutter test
+remote: Enumerating objects: 63, done.
+remote: Counting objects: 100% (63/63), done.
+remote: Compressing objects: 100% (4/4), done.
+remote: Total 32 (delta 27), reused 32 (delta 27), pack-reused 0 (from 0)
+Unpacking objects: 100% (32/32), 10.88 KiB | 38.00 KiB/s, done.
+From https://github.com/LucasAdhayr/App_OrganizadorV02
+   664f1a0..4bc2ece  main       -> origin/main
+Updating 664f1a0..4bc2ece
+Fast-forward
+ docs/ETAPA6.md                          |   7 +++
+ lib/app/app_state.dart                  |  83 ++++++++++++++++++++-----
+ lib/core/dates.dart                     |   7 +++
+ lib/core/models.dart                    |   7 +++
+ lib/core/reminders.dart                 |  63 ++++++++++++++++++-
+ lib/data/backup.dart                    |   4 +-
+ lib/data/codec.dart                     |   2 +
+ lib/data/sqlite_store.dart              |   7 ++-
+ lib/modules/registry.dart               |   8 +--
+ lib/ui/screens/agenda_screen.dart       |  18 +-----
+ lib/ui/screens/dates_screen.dart        |  17 +-----
+ lib/ui/screens/entry_common.dart        |  17 +-----
+ lib/ui/screens/exercise_screen.dart     | 105 +++++++++++++++++++++++++++++---
+ lib/ui/screens/task_form_screen.dart    |  66 +++++++++++++-------
+ lib/ui/screens/tasks_module_screen.dart |   4 +-
+ lib/ui/screens/today_screen.dart        |  25 ++------
+ lib/ui/screens/water_screen.dart        |  67 +++++++++++++-------
+ lib/ui/task_tile.dart                   |   2 +
+ lib/ui/term_widgets.dart                |  38 ++++++++++++
+ test/entries_test.dart                  |  71 ++++++++++++++-------
+ test/reminders_test.dart                |  67 ++++++++++++++++++++
+ 21 files changed, 519 insertions(+), 166 deletions(-)
+Resolving dependencies...
+Downloading packages...
+  cupertino_icons 1.0.9 (2.0.0 available)
+  dbus 0.7.15 (0.8.0 available)
+  flutter_local_notifications 19.5.0 (22.3.2 available)
+  flutter_local_notifications_linux 6.0.0 (8.0.2 available)
+  flutter_local_notifications_platform_interface 9.1.0 (12.2.0 available)
+  flutter_local_notifications_windows 1.0.3 (3.1.1 available)
+  material_color_utilities 0.13.0 (0.13.1 available)
+  meta 1.18.3 (1.19.0 available)
+  petitparser 7.0.2 (7.1.0 available)
+  test_api 0.7.12 (0.7.15 available)
+  timezone 0.10.1 (0.11.2 available)
+  vector_math 2.4.0 (2.4.3 available)
+  xml 6.6.1 (7.1.0 available)
+Got dependencies!
+13 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+Analyzing App_OrganizadorV02...
+
+warning - The value of the local variable 'p' isn't used. Try removing the variable or using it -
+       lib\ui\screens\dates_screen.dart:106:11 - unused_local_variable
+warning - Unused import: '../../core/models.dart'. Try removing the import directive -
+       lib\ui\screens\exercise_screen.dart:7:8 - unused_import
+
+2 issues found. (ran in 9.1s)
+00:56 +63 -1: C:/dev/App_OrganizadorV02/test/dates_test.dart: AppState lembretes consideram as datas [E]
+  Expected: <2>
+    Actual: <13>
+
+  package:matcher                                     expect
+  package:flutter_test/src/widget_tester.dart 473:18  expect
+  test\dates_test.dart 158:7                          main.<fn>.<fn>
+
+
+To run this test again: C:\src\flutter\bin\cache\dart-sdk\bin\dart.exe test C:/dev/App_OrganizadorV02/test/dates_test.dart -p vm --plain-name "AppState lembretes consideram as datas"
+00:58 +109 -2: C:/dev/App_OrganizadorV02/test/reminders_test.dart: AppState + notificações salvar, adiar e concluir refazem os lembretes [E]
+  Bad state: Too many elements
+  dart:core                        List.single
+  test\reminders_test.dart 209:27  main.<fn>.<fn>
+
+
+To run this test again: C:\src\flutter\bin\cache\dart-sdk\bin\dart.exe test C:/dev/App_OrganizadorV02/test/reminders_test.dart -p vm --plain-name "AppState + notificações salvar, adiar e concluir refazem os lembretes"
+00:58 +112 -2: Some tests failed.
+_______________________________________________________________________________________________________________________________________
+fim do erro
