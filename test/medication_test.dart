@@ -172,12 +172,12 @@ void main() {
   });
 
   group('alarmes', () {
-    test('todo remédio ativo gera alarmes pelos próximos 7 dias', () {
+    test('todo remédio ativo gera alarmes pelos próximos dias', () {
       final r = planReminders(const <Task>[], _clock, meds: [_med()]);
       expect(r.every((x) => x.alarm), isTrue);
       expect(r.first.at, DateTime(2026, 10, 13, 20, 0));
-      // Hoje: só 20:00. Mais 6 dias com 2 horários.
-      expect(r.length, 1 + 6 * 2);
+      // Hoje: só 20:00. Mais os outros dias da janela, com 2 horários.
+      expect(r.length, 1 + (kMedDaysAhead - 1) * 2);
       expect(r.first.title, 'Vitamina');
       expect(r.map((x) => x.id).toSet().length, r.length);
     });
@@ -199,8 +199,9 @@ void main() {
           ),
       ];
       final r = planReminders(tasks, _clock, meds: [_med()]);
-      expect(r.where((x) => x.alarm).length, 13);
-      expect(r.length, kMaxReminders + 13);
+      final n = 1 + (kMedDaysAhead - 1) * 2;
+      expect(r.where((x) => x.alarm).length, n);
+      expect(r.length, kMaxReminders + n);
     });
 
     test('silêncio vale também para alarmes', () {

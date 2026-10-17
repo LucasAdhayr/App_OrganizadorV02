@@ -133,7 +133,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
-    final p = s.palette;
     final now = s.now;
 
     final events = s.history
@@ -187,12 +186,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ),
           const SizedBox(height: 12),
           if (events.isEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 32),
-              child: Text(
-                '> Nenhum registro neste filtro.',
-                style: TextStyle(color: p.dim, fontSize: 14),
-              ),
+            const EmptyState(
+              title: '> Nenhum registro neste filtro.',
+              subtitle: 'O que você concluir, adiar ou descartar aparece aqui.',
+              globe: 96,
             )
           else
             for (final entry in groups.entries) ...[

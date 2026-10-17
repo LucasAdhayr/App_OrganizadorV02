@@ -86,7 +86,6 @@ class _TasksModuleScreenState extends State<TasksModuleScreen> {
   @override
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
-    final p = s.palette;
 
     // Rotinas de módulos (ex.: exercícios) ficam no próprio módulo.
     List<Task> pick(bool Function(Task) test) =>
@@ -122,12 +121,10 @@ class _TasksModuleScreenState extends State<TasksModuleScreen> {
               for (final t in sec.$2) _row(context, s, t),
             ],
           if (recurring.isEmpty && single.isEmpty && reusable.isEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 40),
-              child: Text(
-                '> Nenhuma tarefa ativa. Toque em + para criar.',
-                style: TextStyle(color: p.dim, fontSize: 14),
-              ),
+            const EmptyState(
+              title: '> Nenhuma tarefa ativa.',
+              subtitle: 'Toque em + para criar.',
+              globe: 96,
             ),
           if (closed.isNotEmpty) ...[
             const SizedBox(height: 20),

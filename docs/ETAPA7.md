@@ -5,7 +5,7 @@
 - **Tarefas e rotinas de exercício** têm o botão **Alarme** (Sem alarme / Tocar alarme) no formulário, visível quando há horário. Em exercícios, o alarme toca 1 hora antes, como o aviso.
 - Como é o alarme: canal próprio "Alarmes" (som e volume de *alarme* do celular, passa pelo Não perturbar dos alarmes), tela acende sobre o bloqueio, som repetido até você tocar ou deslizar a notificação (no máximo 5 min), agendado como despertador do sistema (ícone de alarme na barra) quando "alarmes exatos" está liberado.
 - Continua valendo o silêncio de 00:00 às 05:00: um alarme nessa janela vai para as 05:00.
-- Os alarmes de remédio ficam agendados 7 dias à frente e **não entram no limite** de lembretes. O plano é refeito a cada abertura do app e a cada mudança.
+- Os alarmes de remédio ficam agendados 14 dias à frente e **não entram no limite** de lembretes. O plano é refeito a cada abertura do app e a cada mudança.
 - Diagnóstico tem o botão "Alarme em 1 minuto" para testar com o app fechado.
 
 ## Medicamentos

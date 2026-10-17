@@ -59,8 +59,8 @@ const List<(int, double, String)> kWaterSlots = [
 
 /// Quantos dias à frente os alarmes de remédio ficam agendados. Como não há
 /// serviço em segundo plano, o plano é refeito a cada vez que o app abre; sete
-/// dias cobrem alguns dias sem abrir o app.
-const int kMedDaysAhead = 7;
+/// duas semanas cobrem uma boa viagem sem abrir o app.
+const int kMedDaysAhead = 14;
 
 /// Quantos dias à frente os avisos de água ficam agendados.
 const int kWaterDaysAhead = 3;

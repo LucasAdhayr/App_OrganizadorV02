@@ -76,16 +76,16 @@ class _InboxScreenState extends State<InboxScreen> {
         const SizedBox(height: 8),
         const TermDivider(),
         if (notes.isEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 40),
-            child: Text(
-              q.isNotEmpty
-                  ? '> Nada encontrado.'
-                  : onlyIdeas
-                      ? '> Nenhuma ideia guardada.'
-                      : '> Nenhuma nota ainda.',
-              style: TextStyle(color: p.dim, fontSize: 14),
-            ),
+          EmptyState(
+            title: q.isNotEmpty
+                ? '> Nada encontrado.'
+                : onlyIdeas
+                    ? '> Nenhuma ideia guardada.'
+                    : '> Nenhuma nota ainda.',
+            subtitle: q.isNotEmpty
+                ? 'Tente outra palavra.'
+                : 'Escreva do jeito que veio à cabeça.',
+            globe: 96,
           )
         else
           for (final n in notes)
