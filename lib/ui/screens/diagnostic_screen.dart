@@ -123,6 +123,16 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
                   : () => _run((x) => x.scheduleTest(const Duration(minutes: 1)),
                       'Agendada. Feche o app e espere.'),
             ),
+            const SizedBox(height: 8),
+            TermButton(
+              label: 'Alarme em 1 minuto',
+              icon: Icons.alarm,
+              expand: true,
+              onPressed: _busy
+                  ? null
+                  : () => _run((x) => x.scheduleAlarmTest(const Duration(minutes: 1)),
+                      'Agendado. Feche o app e espere o som de alarme.'),
+            ),
             const SizedBox(height: 4),
             Text(
               'Faça o teste de 1 minuto com o app fechado (remova dos recentes). '
@@ -136,7 +146,9 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
               '2. Nessa mesma tela > Economizar bateria > Sem restrições.\n'
               '3. Na tela de apps recentes, segure o card do Organizador e '
               'toque no cadeado.\n'
-              '4. Notificações do app: tudo ligado, inclusive "Lembretes de tarefas".',
+              '4. Notificações do app: tudo ligado, inclusive "Lembretes de tarefas" e '
+              '"Alarmes" (esta com som e tela de bloqueio permitidos).\n'
+              '5. Alarmes usam o volume de ALARME do celular: confira que não está no mudo.',
               style: dim,
             ),
           ],

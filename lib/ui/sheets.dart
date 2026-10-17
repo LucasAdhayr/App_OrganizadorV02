@@ -345,6 +345,7 @@ class _TaskDetail extends StatelessWidget {
             '${fmtDateShort(t.dueDate!)}${t.dueTime == null ? '' : ' ${fmtTime(t.dueTime!)}'}'
             '${label.overdue ? '  (atrasada)' : ''}',
           ),
+        if (t.alarm) info('ALARME', 'Toca como despertador'),
         if (t.snoozedUntil != null)
           info('ADIADA PARA', fmtWhen(t.snoozedUntil!, s.now)),
         if (doneAgo != null)

@@ -6,6 +6,7 @@ import '../ui/screens/books_screen.dart';
 import '../ui/screens/exercise_screen.dart';
 import '../ui/screens/food_screen.dart';
 import '../ui/screens/inbox_screen.dart';
+import '../ui/screens/medication_screen.dart';
 import '../ui/screens/task_form_screen.dart';
 import '../ui/screens/water_screen.dart';
 import '../ui/screens/tasks_module_screen.dart';
@@ -59,11 +60,13 @@ Widget _waterScreen(BuildContext context) => const WaterScreen();
 Widget _foodScreen(BuildContext context) => const FoodScreen();
 Widget _exerciseScreen(BuildContext context) => const ExerciseScreen();
 Widget _booksScreen(BuildContext context) => const BooksScreen();
+Widget _medScreen(BuildContext context) => const MedicationScreen();
 
 Future<void> _logWater(BuildContext context) async => logWater(context);
 Future<void> _addMeal(BuildContext context) => showMealSheet(context);
 Future<void> _addExercise(BuildContext context) => addExerciseChoice(context);
 Future<void> _addBook(BuildContext context) => showBookSheet(context);
+Future<void> _addMed(BuildContext context) => showMedicationSheet(context);
 
 const List<ModuleDef> kModules = [
   ModuleDef(
@@ -131,7 +134,9 @@ const List<ModuleDef> kModules = [
     id: 'medicamentos',
     label: 'MEDICAMENTOS',
     icon: Icons.medication_outlined,
-    blurb: 'Horários e estoque',
+    blurb: 'Alarmes, horários e estoque',
+    screen: _medScreen,
+    quickAdd: _addMed,
     addLabel: 'MEDICAMENTO',
   ),
   ModuleDef(

@@ -44,6 +44,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
   late Set<int> _weekdays;
   DateTime? _due;
   TimeOfDay? _time;
+  bool _alarm = false;
   String? _error;
 
   @override
@@ -63,6 +64,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
     _weekdays = Set<int>.of(r?.weekdays ?? const <int>{});
     _due = (t != null && t.kind == TaskKind.single) ? t.dueDate : null;
     _time = (t != null && t.kind == TaskKind.single) ? t.dueTime : t?.time;
+    _alarm = t?.alarm ?? false;
   }
 
   @override
@@ -207,6 +209,35 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
             onPressed: _pickTime,
           ),
         ]),
+      ],
+    );
+  }
+
+  Widget _alarmSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const FieldLabel('Alarme'),
+        _choices([
+          TermButton(
+            label: 'Sem alarme',
+            dense: true,
+            selected: !_alarm,
+            onPressed: () => setState(() => _alarm = false),
+          ),
+          TermButton(
+            label: 'Tocar alarme',
+            icon: Icons.alarm,
+            dense: true,
+            selected: _alarm,
+            onPressed: () => setState(() => _alarm = true),
+          ),
+        ]),
+        _hint(_alarm
+            ? (_module != null
+                ? 'Toca como despertador 1 hora antes. O som se repete até você atender.'
+                : 'Toca como despertador no horário. O som se repete até você atender.')
+            : 'Só uma notificação comum.'),
       ],
     );
   }
@@ -378,6 +409,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
         recurrence: rule,
         notes: notes,
         module: widget.module,
+        alarm: _alarm && time != null,
       );
       s.saveTask(result, isNew: true);
     } else {
@@ -390,6 +422,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
         ..due = due
         ..time = time
         ..recurrence = rule
+        ..alarm = _alarm && time != null
         ..notes = notes;
       result = existing;
       s.saveTask(existing, isNew: false);
@@ -471,6 +504,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
           if (_kind == TaskKind.single) _dueSection(today),
           if (_kind == TaskKind.recurring) _recurrenceSection(),
           if (showTime) _timeSection(),
+          if (showTime && _time != null) _alarmSection(),
           const FieldLabel('Notas (opcional)'),
           TextField(
             controller: _notes,

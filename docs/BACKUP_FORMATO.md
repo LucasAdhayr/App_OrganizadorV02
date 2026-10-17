@@ -15,7 +15,8 @@ JSON em UTF-8, com recuo de 2 espaços. Pensado para ser lido por um HTML/planil
                  "rec_type": "daily|weekdays|everyNDays|monthDay|yearly",
                  "rec_weekdays": "1,3", "rec_interval": 1, "rec_day": 1, "rec_month": 1,
                  "notes": "", "created_at": 1760000000000, "updated_at": 1760000000000,
-                 "snoozed_until": null, "last_done_at": null } ],
+                 "snoozed_until": null, "last_done_at": null,
+                 "module": null, "alarm": 0 } ],
   "history": [ { "id": "...", "at": 1760000000000, "kind": "done", "task_id": "...",
                  "task_title": "...", "detail": "" } ],
   "notes":   [ { "id": "...", "text": "...", "created_at": 1760000000000,
@@ -37,8 +38,13 @@ JSON em UTF-8, com recuo de 2 espaços. Pensado para ser lido por um HTML/planil
 
 ## Registros dos módulos (`entries`)
 `data` é um objeto com os campos de cada módulo (no banco fica como texto JSON; no backup, como objeto):
-- `agua`: `{}` (um registro = um copo; `at` é a hora).
+- `agua`: `{ "ml": 200 }` (um registro = um gole; `at` é a hora; registros antigos sem `ml` valem 200).
 - `alimentacao`: `{ "meal": "cafe|almoco|lanche|jantar|outro", "text": "..." }`.
 - `exercicios`: `{ "kind": "Caminhada", "minutes": 40, "notes": "..." }` (`minutes` e `notes` opcionais).
 - `livros`: `{ "title": "...", "author": "...", "total": 320, "page": 120, "status": "lendo|quero|lido" }` (`total` opcional).
-A chave `entries` é opcional em backups antigos; `settings.waterGoal` é a meta diária de copos.
+- `medicamentos`: `{ "name": "...", "times": "08:00,20:00", "perDose": 1, "stock": 30, "stockAt": 1760000000000, "active": true }`. `stock` é a quantidade que havia em `stockAt`; o estoque atual é calculado descontando `perDose` a cada horário passado desde então. `active: false` = parei de tomar.
+A chave `entries` é opcional em backups antigos; `settings.waterGoalMl` é a meta diária de água em ml (`waterGoal`, em copos, é o formato antigo e ainda é lido).
+
+## Tarefas: campos novos
+- `module`: módulo dono da tarefa (`exercicios` para rotinas de exercício) ou `null`.
+- `alarm`: `1` = toca como alarme; `0` ou ausente = notificação comum.

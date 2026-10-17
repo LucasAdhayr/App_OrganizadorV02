@@ -24,9 +24,14 @@ class TaskTile extends StatelessWidget {
     final t = task;
     final label = dueLabel(t, s.now);
 
+    final tags = [
+      if (t.module == kModExercise) 'EXERCÍCIO',
+      if (t.alarm) 'ALARME',
+    ].join(' · ');
+
     final row = TermRow(
       title: t.title,
-      subtitle: t.module == kModExercise ? 'EXERCÍCIO' : null,
+      subtitle: tags.isEmpty ? null : tags,
       leading: TermMarker(
         overdue: label.overdue,
         onTap: () => completeTask(context, t),

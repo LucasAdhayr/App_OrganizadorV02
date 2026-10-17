@@ -1,5 +1,6 @@
 import 'dates.dart';
 import 'entry.dart';
+import 'medication.dart';
 import 'models.dart';
 import 'special_dates.dart';
 
@@ -11,6 +12,7 @@ class Reminder {
     required this.at,
     required this.title,
     required this.body,
+    this.alarm = false,
   });
 
   /// Identificador estável (mesma tarefa e mesmo tipo = mesmo id).
@@ -19,6 +21,9 @@ class Reminder {
   final DateTime at;
   final String title;
   final String body;
+
+  /// Toca como alarme (som de despertador, tela acesa).
+  final bool alarm;
 }
 
 /// Início e fim do silêncio: nada toca entre 00:00 e 05:00; quem cairia nessa
@@ -40,6 +45,11 @@ const List<(int, double, String)> kWaterSlots = [
   (18, 0.7, 'Beba mais água'),
   (21, 1.0, 'Ainda falta beber água'),
 ];
+
+/// Quantos dias à frente os alarmes de remédio ficam agendados. Como não há
+/// serviço em segundo plano, o plano é refeito a cada vez que o app abre; sete
+/// dias cobrem alguns dias sem abrir o app.
+const int kMedDaysAhead = 7;
 
 /// Quantos dias à frente os avisos de água ficam agendados.
 const int kWaterDaysAhead = 3;
@@ -79,6 +89,7 @@ List<Reminder> planReminders(
   DateTime now, {
   Iterable<SpecialDate> dates = const <SpecialDate>[],
   WaterPlan? water,
+  Iterable<Medication> meds = const <Medication>[],
   int limit = kMaxReminders,
 }) {
   final out = <Reminder>[];
@@ -92,6 +103,7 @@ List<Reminder> planReminders(
       at: when,
       title: t.title,
       body: body,
+      alarm: t.alarm,
     ));
   }
 
@@ -177,5 +189,28 @@ List<Reminder> planReminders(
   }
 
   out.sort((a, b) => a.at.compareTo(b.at));
-  return out.length <= limit ? out : out.sublist(0, limit);
+  final capped = out.length <= limit ? out : out.sublist(0, limit);
+
+  // Remédios: sempre alarme, e nunca cortados pelo limite acima.
+  for (final m in meds) {
+    if (!m.active) continue;
+    final ts = m.times;
+    for (var d = 0; d < kMedDaysAhead; d++) {
+      final day = DateTime(today.year, today.month, today.day + d);
+      for (var i = 0; i < ts.length; i++) {
+        final at = _applySilence(DateTime(day.year, day.month, day.day, ts[i].hour, ts[i].minute));
+        if (!at.isAfter(now)) continue;
+        capped.add(Reminder(
+          id: (_fnv('m:${m.id}:${day.difference(DateTime(2020)).inDays}:$i') & 0x1fffffff) + 1000000000,
+          taskId: 'med:${m.id}',
+          at: at,
+          title: m.name,
+          body: 'Hora de tomar: ${m.perDose} ${m.perDose == 1 ? 'unidade' : 'unidades'}',
+          alarm: true,
+        ));
+      }
+    }
+  }
+  capped.sort((a, b) => a.at.compareTo(b.at));
+  return capped;
 }

@@ -120,6 +120,7 @@ class Task {
     this.snoozedUntil,
     this.lastDoneAt,
     this.module,
+    this.alarm = false,
   }) : updatedAt = updatedAt ?? createdAt;
 
   final String id;
@@ -131,6 +132,9 @@ class Task {
   String title;
   TaskKind kind;
   TaskStatus status;
+
+  /// Toca como alarme (som de despertador, tela acesa) em vez de só notificar.
+  bool alarm;
 
   /// Prazo (ou próxima ocorrência, se recorrente). Só a data.
   DateTime? due;
@@ -169,6 +173,7 @@ class Task {
         snoozedUntil: snoozedUntil,
         lastDoneAt: lastDoneAt,
         module: module,
+        alarm: alarm,
       );
 
   void restoreFrom(Task o) {
@@ -182,6 +187,7 @@ class Task {
     updatedAt = o.updatedAt;
     snoozedUntil = o.snoozedUntil;
     lastDoneAt = o.lastDoneAt;
+    alarm = o.alarm;
   }
 }
 

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../core/dates.dart';
 import '../core/entry.dart';
+import '../core/medication.dart';
 import '../core/ids.dart';
 import '../core/models.dart';
 import '../core/reminders.dart';
@@ -102,6 +103,7 @@ class AppState extends ChangeNotifier {
         water: waterReminders
             ? WaterPlan(goalMl: waterGoalMl, mlOn: waterMlOn)
             : null,
+        meds: medications,
       );
 
   /// Refaz os lembretes agendados. Várias chamadas seguidas viram uma só.
@@ -606,6 +608,78 @@ class AppState extends ChangeNotifier {
     _save((s) => s.upsertEntry(e));
     replan();
     notifyListeners();
+  }
+
+  // ------------------------------------------------------------- medicamentos
+
+  /// Todos os remédios (ativos primeiro, depois os parados), por nome.
+  List<Medication> get medications {
+    final list = entries.where((e) => e.module == kModMed).map(Medication.new).toList();
+    list.sort((a, b) {
+      if (a.active != b.active) return a.active ? -1 : 1;
+      return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+    });
+    return list;
+  }
+
+  /// Remédios ativos com estoque baixo (7 dias ou menos) ou acabado.
+  List<Medication> get lowMedications =>
+      medications.where((m) => m.isLow(now)).toList();
+
+  Medication addMedication({
+    required String name,
+    required List<TimeOfDay> times,
+    required int perDose,
+    required int stock,
+  }) {
+    final n = now;
+    final e = addEntry(kModMed, data: <String, Object?>{
+      'name': name,
+      'times': joinMedTimes(times),
+      'perDose': perDose,
+      'stock': stock,
+      'stockAt': n.millisecondsSinceEpoch,
+      'active': true,
+    });
+    return Medication(e);
+  }
+
+  /// Muda nome, horários e dose sem refazer o consumo já ocorrido.
+  void editMedication(
+    Medication m, {
+    required String name,
+    required List<TimeOfDay> times,
+    required int perDose,
+  }) {
+    final data = m.rebased(now)
+      ..['name'] = name
+      ..['times'] = joinMedTimes(times)
+      ..['perDose'] = perDose;
+    updateEntry(m.entry, data: data);
+  }
+
+  /// "Comprei mais": soma [amount] ao que resta agora.
+  void addMedicationStock(Medication m, int amount) {
+    final data = m.rebased(now)..['stock'] = m.remaining(now) + amount;
+    updateEntry(m.entry, data: data);
+  }
+
+  /// Define o estoque exato de agora (corrigir a contagem).
+  void setMedicationStock(Medication m, int units) {
+    final data = m.rebased(now)..['stock'] = units;
+    updateEntry(m.entry, data: data);
+  }
+
+  /// "Parei de tomar": sem alarmes e sem consumo de estoque.
+  void stopMedication(Medication m) {
+    final data = m.rebased(now)..['active'] = false;
+    updateEntry(m.entry, data: data);
+  }
+
+  /// Volta a tomar: o consumo recomeça agora.
+  void resumeMedication(Medication m) {
+    final data = m.rebased(now)..['active'] = true;
+    updateEntry(m.entry, data: data);
   }
 
   // ---------------------------------------------------------------------- água

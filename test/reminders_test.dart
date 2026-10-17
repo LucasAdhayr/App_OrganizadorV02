@@ -46,6 +46,8 @@ class _FakeNotifier implements Notifier {
   Future<void> showTest() async {}
   @override
   Future<void> scheduleTest(Duration after) async {}
+  @override
+  Future<void> scheduleAlarmTest(Duration after) async {}
 }
 
 void main() {
