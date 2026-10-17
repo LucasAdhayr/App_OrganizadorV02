@@ -51,8 +51,9 @@ class SettingsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Linhas de varredura e brilho leve. Nada pisca nem se move. '
-            'OFF desliga tudo.',
+            'SUAVE: linhas finas e brilho leve. COMPLETO: brilho forte, linhas '
+            'marcadas e vinheta. GRANULADO: o completo com textura de filme. '
+            'Tudo fixo: nada pisca nem se move. OFF desliga tudo.',
             style: dim,
           ),
           const FieldLabel('Revisão de tarefas antigas'),
@@ -87,19 +88,14 @@ class SettingsScreen extends StatelessWidget {
           ),
           const FieldLabel('Lembretes'),
           Text(
-            'Chegam na Etapa 3: silêncio das 00:00 às 05:00; adiar por 10 min, '
-            '1 h, hoje à noite ou amanhã; aviso 1 dia antes e às 09:00.',
-            style: dim,
-          ),
-          const FieldLabel('Lembretes'),
-          Text(
-            'Tarefas com horário avisam na hora. Só com data, avisam na véspera '
-            'e no dia, às 09:00. Nada toca entre 00:00 e 05:00.',
+            'Tarefas com horário avisam na hora (ou tocam alarme, se você marcar). '
+            'Só com data, avisam na véspera e no dia, às 09:00. Remédios sempre '
+            'tocam alarme. Nada toca entre 00:00 e 05:00.',
             style: dim,
           ),
           const SizedBox(height: 8),
           TermButton(
-            label: 'Diagnóstico de notificações',
+            label: 'Diagnóstico de alarmes e notificações',
             icon: Icons.notifications_active_outlined,
             expand: true,
             onPressed: () => Navigator.of(context).push<void>(
@@ -126,8 +122,8 @@ class SettingsScreen extends StatelessWidget {
           ),
           const FieldLabel('Sobre esta versão'),
           Text(
-            'Etapa 4. Tudo fica salvo no banco do próprio celular e continua '
-            'aqui depois de fechar o app.',
+            'Tudo fica salvo no banco do próprio celular e continua aqui depois '
+            'de fechar o app. Nada sai do aparelho.',
             style: dim,
           ),
           const FieldLabel('Dados de exemplo'),

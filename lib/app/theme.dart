@@ -11,8 +11,8 @@ ThemeData buildTheme(AppPalette p, EffectLevel fx) {
       ? <Shadow>[]
       : <Shadow>[
           Shadow(
-            color: p.fg.withValues(alpha: fx == EffectLevel.full ? 0.55 : 0.30),
-            blurRadius: fx == EffectLevel.full ? 8 : 5,
+            color: p.fg.withValues(alpha: fx.strong ? 0.55 : 0.30),
+            blurRadius: fx.strong ? 8 : 5,
           ),
         ];
 

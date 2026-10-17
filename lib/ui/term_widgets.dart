@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' show PointMode;
 
 import 'package:flutter/material.dart';
 
@@ -93,7 +94,7 @@ class GlitchTitle extends StatelessWidget {
       color: s.palette.fg,
     );
     final label = text.toUpperCase();
-    if (s.effects != EffectLevel.full) {
+    if (!s.effects.strong) {
       return Text(label, style: base, maxLines: 1, overflow: TextOverflow.ellipsis);
     }
     const noGlow = <Shadow>[];
@@ -489,7 +490,8 @@ class _GlobePainter extends CustomPainter {
   bool shouldRepaint(_GlobePainter old) => old.color != color;
 }
 
-/// Scanlines e vinheta por cima de tudo. Estático: não consome bateria.
+/// Scanlines, vinheta e (no GRANULADO) ruído por cima de tudo. Estático: não
+/// consome bateria e nada pisca.
 class CrtOverlay extends StatelessWidget {
   const CrtOverlay({super.key, required this.level});
 
@@ -503,6 +505,9 @@ class CrtOverlay extends StatelessWidget {
         child: CustomPaint(
           size: Size.infinite,
           painter: _CrtPainter(level),
+          // Granulado: uma camada própria, que só é redesenhada se a tela ou o
+          // efeito mudar (ruído fixo: não pisca nem consome bateria).
+          foregroundPainter: level.hasGrain ? const _GrainPainter() : null,
         ),
       ),
     );
@@ -516,7 +521,7 @@ class _CrtPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final full = level == EffectLevel.full;
+    final full = level.strong;
     final line = Paint()..color = Colors.black.withValues(alpha: full ? 0.22 : 0.12);
     final step = full ? 3.0 : 4.0;
     for (var y = 0.0; y < size.height; y += step) {
@@ -534,6 +539,39 @@ class _CrtPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_CrtPainter old) => old.level != level;
+}
+
+/// Granulado de filme: pontos claros e escuros espalhados de forma fixa
+/// (semente constante), em três intensidades. Discreto o bastante para não
+/// atrapalhar a leitura de texto pequeno.
+class _GrainPainter extends CustomPainter {
+  const _GrainPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rnd = math.Random(20261017);
+    final count = (size.width * size.height / 70).round().clamp(0, 12000);
+    final tones = <(Color, double)>[
+      (const Color(0x14FFFFFF), 1.3),
+      (const Color(0x0DFFFFFF), 1.8),
+      (const Color(0x24000000), 1.5),
+    ];
+    final buckets = [for (final _ in tones) <Offset>[]];
+    for (var i = 0; i < count; i++) {
+      buckets[rnd.nextInt(tones.length)]
+          .add(Offset(rnd.nextDouble() * size.width, rnd.nextDouble() * size.height));
+    }
+    for (var t = 0; t < tones.length; t++) {
+      final paint = Paint()
+        ..color = tones[t].$1
+        ..strokeWidth = tones[t].$2
+        ..strokeCap = StrokeCap.square;
+      canvas.drawPoints(PointMode.points, buckets[t], paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_GrainPainter old) => false;
 }
 
 // ------------------------------------------------------------------- campos

@@ -1,13 +1,21 @@
 import 'package:flutter/material.dart';
 
-enum EffectLevel { off, soft, full }
+/// Efeitos de tela. `grain` é o COMPLETO mais granulado (ruído fixo de filme).
+enum EffectLevel { off, soft, full, grain }
 
 extension EffectLevelX on EffectLevel {
   String get label => switch (this) {
         EffectLevel.off => 'OFF',
         EffectLevel.soft => 'SUAVE',
         EffectLevel.full => 'COMPLETO',
+        EffectLevel.grain => 'GRANULADO',
       };
+
+  /// Brilho forte, linhas mais marcadas e vinheta (COMPLETO e GRANULADO).
+  bool get strong => this == EffectLevel.full || this == EffectLevel.grain;
+
+  /// Textura de granulado por cima de tudo.
+  bool get hasGrain => this == EffectLevel.grain;
 }
 
 /// Todas as cores do app vêm daqui. Para criar um tema novo, basta
@@ -85,5 +93,31 @@ class AppPalette {
     alert: Color(0xFFFF6B6B),
   );
 
-  static const List<AppPalette> all = [green, amber, cyan];
+  /// Rosa neon. O "dim" é claro o bastante para texto pequeno.
+  static const AppPalette pink = AppPalette(
+    id: 'rosa',
+    name: 'ROSA',
+    bg: Color(0xFF0D040B),
+    surface: Color(0xFF170A14),
+    fg: Color(0xFFFF5FD2),
+    dim: Color(0xFFD04DAA),
+    line: Color(0xFF3A1730),
+    warn: Color(0xFFFFB84D),
+    alert: Color(0xFFFF6B6B),
+  );
+
+  /// Branco-gelo, quase monocromático: o mais discreto e confortável à noite.
+  static const AppPalette ice = AppPalette(
+    id: 'gelo',
+    name: 'GELO',
+    bg: Color(0xFF05080B),
+    surface: Color(0xFF0C1218),
+    fg: Color(0xFFE6F4FF),
+    dim: Color(0xFF8FA8BA),
+    line: Color(0xFF1D2A35),
+    warn: Color(0xFFFFB84D),
+    alert: Color(0xFFFF6B6B),
+  );
+
+  static const List<AppPalette> all = [green, amber, cyan, pink, ice];
 }
