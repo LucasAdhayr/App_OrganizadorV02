@@ -16,14 +16,14 @@ JSON em UTF-8, com recuo de 2 espaços. Pensado para ser lido por um HTML/planil
                  "rec_weekdays": "1,3", "rec_interval": 1, "rec_day": 1, "rec_month": 1,
                  "notes": "", "created_at": 1760000000000, "updated_at": 1760000000000,
                  "snoozed_until": null, "last_done_at": null,
-                 "module": null, "alarm": 0, "amount_cents": null } ],
+                 "module": null, "alarm": 0, "amount_cents": null, "ref": null } ],
   "history": [ { "id": "...", "at": 1760000000000, "kind": "done", "task_id": "...",
                  "task_title": "...", "detail": "" } ],
   "notes":   [ { "id": "...", "text": "...", "created_at": 1760000000000,
                  "is_idea": 0, "converted": 0, "deleted_at": null } ],
   "dates":   [ { "id": "...", "title": "Aniversário da Ana", "kind": "birthday|date",
                  "month": 3, "day": 8, "year": 1990, "notes": "", "created_at": 1760000000000 } ],
-  "entries": [ { "id": "...", "module": "agua|alimentacao|exercicios|livros|medicamentos|financas", "at": 1760000000000,
+  "entries": [ { "id": "...", "module": "agua|alimentacao|exercicios|livros|medicamentos|financas|aulas", "at": 1760000000000,
                  "data": { "...campos do módulo..." },
                  "created_at": 1760000000000, "updated_at": 1760000000000, "deleted_at": null } ]
 }
@@ -44,9 +44,11 @@ JSON em UTF-8, com recuo de 2 espaços. Pensado para ser lido por um HTML/planil
 - `livros`: `{ "title": "...", "author": "...", "total": 320, "page": 120, "status": "lendo|quero|lido" }` (`total` opcional).
 - `medicamentos`: `{ "name": "...", "times": "08:00,20:00", "perDose": 1, "stock": 30, "stockAt": 1760000000000, "active": true }`. `stock` é a quantidade que havia em `stockAt`; o estoque atual é calculado descontando `perDose` a cada horário passado desde então. `active: false` = parei de tomar.
 - `financas`: `{ "desc": "Mercado", "cents": 2590, "cat": "Mercado|Transporte|Casa|Saúde|Lazer|Outros|Contas", "bill": "<id da conta, se foi um pagamento>" }` (`at` é quando foi gasto/pago).
+- `aulas` (uma disciplina): `{ "name": "Máquinas de Fluxo", "slots": "2@07:00,4@15:00", "lead": 30, "alarm": false, "maxAbs": 12, "abs": 3, "p1": 750, "p2": 800, "pass": 600 }`. `slots` = `diaDaSemana@HH:MM` (1 = segunda ... 7 = domingo); `lead` = minutos de antecedência do aviso (-1 sem aviso, 0 na hora); notas em centésimos (750 = 7,5), ausentes se ainda não houve; `maxAbs` 0 = não controlar faltas.
 A chave `entries` é opcional em backups antigos; `settings.waterGoalMl` é a meta diária de água em ml (`waterGoal`, em copos, é o formato antigo e ainda é lido).
 
 ## Tarefas: campos novos
 - `module`: módulo dono da tarefa (`exercicios` para rotinas de exercício) ou `null`.
 - `alarm`: `1` = toca como alarme; `0` ou ausente = notificação comum.
 - `amount_cents`: valor da conta em centavos (módulo `financas`) ou `null`.
+- `ref`: id do registro a que a tarefa pertence (prova/trabalho do módulo `aulas` aponta para a disciplina) ou `null`.
