@@ -39,3 +39,17 @@ const String kModWater = 'agua';
 const String kModFood = 'alimentacao';
 const String kModExercise = 'exercicios';
 const String kModBook = 'livros';
+const String kModFinance = 'financas';
+
+/// Categorias de gasto (a última é o "resto"). Pagar uma conta registra-a em
+/// [kBillCategory].
+const List<String> kExpenseCategories = [
+  'Mercado',
+  'Transporte',
+  'Casa',
+  'Saúde',
+  'Lazer',
+  'Outros',
+];
+const String kBillCategory = 'Contas';
+const String kOtherCategory = 'Outros';

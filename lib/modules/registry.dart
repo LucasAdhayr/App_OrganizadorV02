@@ -4,6 +4,7 @@ import '../ui/screens/date_form_screen.dart';
 import '../ui/screens/dates_screen.dart';
 import '../ui/screens/books_screen.dart';
 import '../ui/screens/exercise_screen.dart';
+import '../ui/screens/finance_screen.dart';
 import '../ui/screens/food_screen.dart';
 import '../ui/screens/inbox_screen.dart';
 import '../ui/screens/medication_screen.dart';
@@ -61,12 +62,14 @@ Widget _foodScreen(BuildContext context) => const FoodScreen();
 Widget _exerciseScreen(BuildContext context) => const ExerciseScreen();
 Widget _booksScreen(BuildContext context) => const BooksScreen();
 Widget _medScreen(BuildContext context) => const MedicationScreen();
+Widget _financeScreen(BuildContext context) => const FinanceScreen();
 
 Future<void> _logWater(BuildContext context) async => logWater(context);
 Future<void> _addMeal(BuildContext context) => showMealSheet(context);
 Future<void> _addExercise(BuildContext context) => addExerciseChoice(context);
 Future<void> _addBook(BuildContext context) => showBookSheet(context);
 Future<void> _addMed(BuildContext context) => showMedicationSheet(context);
+Future<void> _addFinance(BuildContext context) => addFinanceChoice(context);
 
 const List<ModuleDef> kModules = [
   ModuleDef(
@@ -143,7 +146,9 @@ const List<ModuleDef> kModules = [
     id: 'financas',
     label: 'FINANÇAS',
     icon: Icons.payments_outlined,
-    blurb: 'Contas a pagar e vencimentos',
-    addLabel: 'CONTA A PAGAR',
+    blurb: 'Contas a pagar, vencimentos e gastos',
+    screen: _financeScreen,
+    quickAdd: _addFinance,
+    addLabel: 'FINANÇAS (CONTA OU GASTO)',
   ),
 ];

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../app/app_state.dart';
 import '../app/palette.dart';
 import '../core/dates.dart';
+import '../core/entry.dart';
 import '../core/models.dart';
 import 'sheets.dart';
 
@@ -61,9 +62,10 @@ void completeTask(BuildContext context, Task t) {
   final s = AppScope.read(context);
   final m = ScaffoldMessenger.of(context);
   s.complete(t);
+  final bill = t.module == kModFinance;
   final msg = switch (t.kind) {
-    TaskKind.recurring => 'Feito. Próxima: ${fmtDateShort(t.due!)}.',
-    TaskKind.single => 'Tarefa concluída.',
+    TaskKind.recurring => '${bill ? 'Paga' : 'Feito'}. Próxima: ${fmtDateShort(t.due!)}.',
+    TaskKind.single => bill ? 'Conta paga.' : 'Tarefa concluída.',
     TaskKind.reusable => 'Marcada como feita.',
   };
   toast(m, s.palette, msg, onUndo: s.undo);

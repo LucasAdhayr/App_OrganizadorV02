@@ -5,6 +5,7 @@ import '../../app/app_state.dart';
 import '../../core/dates.dart';
 import '../../core/entry.dart';
 import '../../core/models.dart';
+import '../../core/money.dart';
 import '../actions.dart';
 import '../term_widgets.dart';
 
@@ -37,9 +38,12 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
   late final TextEditingController _interval;
   late final TextEditingController _monthDay;
   late final TextEditingController _month;
+  late final TextEditingController _amount;
   late TaskKind _kind;
   String? get _module => widget.edit?.module ?? widget.module;
-  String get _moduleLabel => _module == kModExercise ? 'Exercício' : 'Rotina';
+  bool get _isExercise => _module == kModExercise;
+  bool get _isFinance => _module == kModFinance;
+  String get _moduleLabel => _isExercise ? 'Exercício' : (_isFinance ? 'Conta' : 'Rotina');
   late RecurrenceType _rtype;
   late Set<int> _weekdays;
   DateTime? _due;
@@ -57,9 +61,14 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
     _interval = TextEditingController(text: '${r?.interval ?? 2}');
     _monthDay = TextEditingController(text: '${r?.dayOfMonth ?? 1}');
     _month = TextEditingController(text: '${r?.month ?? 1}');
-    _kind = (t?.module ?? widget.module) != null
+    final cents = t?.amountCents;
+    _amount = TextEditingController(
+      text: cents == null ? '' : fmtMoney(cents).replaceFirst('R\$ ', ''),
+    );
+    final mod = t?.module ?? widget.module;
+    _kind = mod == kModExercise
         ? TaskKind.recurring
-        : (t?.kind ?? TaskKind.single);
+        : (t?.kind == TaskKind.reusable && mod != null ? TaskKind.single : (t?.kind ?? TaskKind.single));
     _rtype = r?.type ?? RecurrenceType.daily;
     _weekdays = Set<int>.of(r?.weekdays ?? const <int>{});
     _due = (t != null && t.kind == TaskKind.single) ? t.dueDate : null;
@@ -74,6 +83,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
     _interval.dispose();
     _monthDay.dispose();
     _month.dispose();
+    _amount.dispose();
     super.dispose();
   }
 
@@ -194,7 +204,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
       children: [
         const FieldLabel('Horário'),
         _choices([
-          if (_module == null)
+          if (!_isExercise)
             TermButton(
               label: 'Sem horário',
               dense: true,
@@ -234,9 +244,11 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
           ),
         ]),
         _hint(_alarm
-            ? (_module != null
-                ? 'Toca como despertador 1 hora antes. O som se repete até você atender.'
-                : 'Toca como despertador no horário. O som se repete até você atender.')
+            ? (_time == null
+                ? 'Toca como despertador às 09:00, na véspera e no dia. O som se repete até você atender.'
+                : _isExercise
+                    ? 'Toca como despertador 1 hora antes. O som se repete até você atender.'
+                    : 'Toca como despertador no horário. O som se repete até você atender.')
             : 'Só uma notificação comum.'),
       ],
     );
@@ -362,9 +374,24 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
       rule = _buildRule();
       if (rule == null) return;
     }
-    if (_module != null && _time == null) {
+    if (_isExercise && _time == null) {
       setState(() => _error = 'Escolha o horário (o aviso chega 1 hora antes).');
       return;
+    }
+    int? amount;
+    if (_isFinance) {
+      final raw = _amount.text.trim();
+      if (raw.isNotEmpty) {
+        amount = parseMoney(raw);
+        if (amount == null) {
+          setState(() => _error = 'Não entendi o valor. Exemplo: 89,90');
+          return;
+        }
+      }
+      if (_kind == TaskKind.single && _due == null) {
+        setState(() => _error = 'Escolha o vencimento da conta.');
+        return;
+      }
     }
 
     final s = AppScope.read(context);
@@ -396,6 +423,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
         time = null;
     }
 
+    final hasSchedule = _kind == TaskKind.recurring || (_kind == TaskKind.single && due != null);
     final notes = _notes.text.trim();
     final Task result;
     if (existing == null) {
@@ -409,7 +437,8 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
         recurrence: rule,
         notes: notes,
         module: widget.module,
-        alarm: _alarm && time != null,
+        alarm: _alarm && hasSchedule,
+        amountCents: amount,
       );
       s.saveTask(result, isNew: true);
     } else {
@@ -422,7 +451,8 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
         ..due = due
         ..time = time
         ..recurrence = rule
-        ..alarm = _alarm && time != null
+        ..alarm = _alarm && hasSchedule
+        ..amountCents = _isFinance ? amount : existing.amountCents
         ..notes = notes;
       result = existing;
       s.saveTask(existing, isNew: false);
@@ -444,9 +474,11 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
         (_kind == TaskKind.single && _due != null);
 
     return TermScaffold(
-      title: _module != null
-          ? (editing ? 'Editar rotina' : 'Nova rotina')
-          : (editing ? 'Editar tarefa' : 'Nova tarefa'),
+      title: _isFinance
+          ? (editing ? 'Editar conta' : 'Nova conta a pagar')
+          : _isExercise
+              ? (editing ? 'Editar rotina' : 'Nova rotina')
+              : (editing ? 'Editar tarefa' : 'Nova tarefa'),
       bottom: Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
         child: Column(
@@ -462,7 +494,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                 ),
               ),
             TermButton(
-              label: editing ? 'Salvar alterações' : 'Salvar tarefa',
+              label: editing ? 'Salvar alterações' : (_isFinance ? 'Salvar conta' : 'Salvar tarefa'),
               expand: true,
               primary: true,
               onPressed: _save,
@@ -484,10 +516,43 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
             cursorColor: p.fg,
             decoration: termInput(
               context,
-              hint: _module != null ? 'Ex.: Musculação' : 'O que precisa ser feito?',
+              hint: _isFinance
+                  ? 'Ex.: Internet'
+                  : (_isExercise ? 'Ex.: Musculação' : 'O que precisa ser feito?'),
             ),
           ),
-          if (_module == null) ...[
+          if (_isFinance) ...[
+            const FieldLabel('Valor (opcional)'),
+            TextField(
+              controller: _amount,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
+              style: const TextStyle(fontSize: 15),
+              cursorColor: p.fg,
+              decoration: termInput(context, hint: 'Ex.: 89,90'),
+            ),
+            const FieldLabel('Quando'),
+            _choices([
+              TermButton(
+                label: 'Vence uma vez',
+                dense: true,
+                selected: _kind == TaskKind.single,
+                onPressed: () => setState(() => _kind = TaskKind.single),
+              ),
+              TermButton(
+                label: 'Se repete',
+                icon: Icons.repeat,
+                dense: true,
+                selected: _kind == TaskKind.recurring,
+                onPressed: () => setState(() => _kind = TaskKind.recurring),
+              ),
+            ]),
+            _hint(_kind == TaskKind.recurring
+                ? 'Ex.: todo mês, no dia 10. Ao pagar, a próxima já aparece.'
+                : 'Uma conta só. Escolha o vencimento.'),
+          ] else if (_isExercise)
+            _hint('Repete sozinha e aparece em HOJE e AGENDA. Ao concluir, registra o treino.')
+          else ...[
             const FieldLabel('Tipo'),
             _choices([
               for (final k in TaskKind.values)
@@ -499,12 +564,11 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                 ),
             ]),
             _hint(_kindHint(_kind)),
-          ] else
-            _hint('Repete sozinha e aparece em HOJE e AGENDA. Ao concluir, registra o treino.'),
+          ],
           if (_kind == TaskKind.single) _dueSection(today),
           if (_kind == TaskKind.recurring) _recurrenceSection(),
           if (showTime) _timeSection(),
-          if (showTime && _time != null) _alarmSection(),
+          if (showTime) _alarmSection(),
           const FieldLabel('Notas (opcional)'),
           TextField(
             controller: _notes,

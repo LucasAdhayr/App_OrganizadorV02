@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../app/app_state.dart';
 import '../core/dates.dart';
+import '../core/entry.dart';
 import '../core/labels.dart';
 import '../core/models.dart';
+import '../core/money.dart';
 import '../modules/registry.dart';
 import 'actions.dart';
 import 'screens/task_form_screen.dart';
@@ -213,15 +215,17 @@ Future<void> showAddSheet(BuildContext context) async {
           expand: true,
           onPressed: () => pick('nota'),
         ),
-        gap(16),
-        Text(
-          'EM BREVE',
-          style: TextStyle(color: c.pal.dim, fontSize: 12, letterSpacing: 1.5),
-        ),
-        gap(),
-        for (final m in soon) ...[
-          TermButton(label: m.addLabel!, icon: m.icon, expand: true),
+        if (soon.isNotEmpty) ...[
+          gap(16),
+          Text(
+            'EM BREVE',
+            style: TextStyle(color: c.pal.dim, fontSize: 12, letterSpacing: 1.5),
+          ),
           gap(),
+          for (final m in soon) ...[
+            TermButton(label: m.addLabel!, icon: m.icon, expand: true),
+            gap(),
+          ],
         ],
       ],
     );
@@ -345,6 +349,7 @@ class _TaskDetail extends StatelessWidget {
             '${fmtDateShort(t.dueDate!)}${t.dueTime == null ? '' : ' ${fmtTime(t.dueTime!)}'}'
             '${label.overdue ? '  (atrasada)' : ''}',
           ),
+        if (t.amountCents != null) info('VALOR', fmtMoney(t.amountCents!)),
         if (t.alarm) info('ALARME', 'Toca como despertador'),
         if (t.snoozedUntil != null)
           info('ADIADA PARA', fmtWhen(t.snoozedUntil!, s.now)),
@@ -356,7 +361,7 @@ class _TaskDetail extends StatelessWidget {
         if (active) ...[
           if (s.canComplete(t)) ...[
             TermButton(
-              label: 'Concluir',
+              label: t.module == kModFinance ? 'Marcar como paga' : 'Concluir',
               icon: Icons.check,
               expand: true,
               primary: true,

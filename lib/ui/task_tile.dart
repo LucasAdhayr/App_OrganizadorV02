@@ -4,6 +4,7 @@ import '../app/app_state.dart';
 import '../core/entry.dart';
 import '../core/labels.dart';
 import '../core/models.dart';
+import '../core/money.dart';
 import 'actions.dart';
 import 'sheets.dart';
 import 'term_widgets.dart';
@@ -26,6 +27,8 @@ class TaskTile extends StatelessWidget {
 
     final tags = [
       if (t.module == kModExercise) 'EXERCÍCIO',
+      if (t.module == kModFinance)
+        t.amountCents == null ? 'CONTA' : 'CONTA ${fmtMoney(t.amountCents!)}',
       if (t.alarm) 'ALARME',
     ].join(' · ');
 
@@ -46,7 +49,7 @@ class TaskTile extends StatelessWidget {
       // a linha antiga sai e uma nova entra.
       key: ValueKey('${t.id}|${t.status.name}|${t.due}|${t.snoozedUntil}'),
       background: _SwipeBackground(
-        label: 'CONCLUIR',
+        label: t.module == kModFinance ? 'PAGAR' : 'CONCLUIR',
         icon: Icons.check,
         alignment: Alignment.centerLeft,
         color: p.fg,

@@ -58,6 +58,7 @@ Map<String, Object?> taskToMap(Task t) {
     'last_done_at': t.lastDoneAt == null ? null : _ms(t.lastDoneAt!),
     'module': t.module,
     'alarm': t.alarm ? 1 : 0,
+    'amount_cents': t.amountCents,
   };
 }
 
@@ -93,6 +94,7 @@ Task taskFromMap(Map<String, Object?> m) {
     lastDoneAt: lastDone == null ? null : _fromMs(lastDone),
     module: m['module'] as String?,
     alarm: m['alarm'] == 1 || m['alarm'] == true,
+    amountCents: (m['amount_cents'] as num?)?.toInt(),
   );
 }
 

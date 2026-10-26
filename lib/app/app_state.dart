@@ -437,6 +437,8 @@ class AppState extends ChangeNotifier {
   /// andava semanas para a frente. Única e reutilizável não têm essa trava.
   bool canComplete(Task t) {
     if (t.kind != TaskKind.recurring) return true;
+    // Conta a pagar pode ser paga adiantada (a próxima só muda de mês depois).
+    if (t.module == kModFinance) return true;
     final due = t.dueDate;
     return due == null || !dateOnly(due).isAfter(dateOnly(now));
   }
@@ -456,7 +458,7 @@ class AppState extends ChangeNotifier {
           // as perdidas, e as perdidas não contaminam as futuras.
           final rule =
               t.recurrence ?? const Recurrence(type: RecurrenceType.daily);
-          t.due = rule.nextAfter(dateOnly(n));
+          t.due = _nextAfterDone(t, rule, n);
           t.status = TaskStatus.pending;
         }
       case TaskKind.single:
@@ -464,22 +466,44 @@ class AppState extends ChangeNotifier {
         t.status = TaskStatus.done;
     }
     _log(HistoryKind.done, t);
-    if (t.module == kModExercise) {
-      // Concluir a rotina registra o treino feito.
-      final e = Entry(
-        id: newId('e'),
-        module: kModExercise,
-        at: n,
-        data: <String, Object?>{'kind': t.title, 'notes': '', 'routine': t.id},
-        createdAt: n,
-      );
-      entries.add(e);
-      _save((s) => s.upsertEntry(e));
-      _undo?.entry = e;
+    final logged = _moduleLogFor(t, n);
+    if (logged != null) {
+      entries.add(logged);
+      _save((s) => s.upsertEntry(logged));
+      _undo?.entry = logged;
     }
     _saveTask(t);
     notifyListeners();
     return true;
+  }
+
+  /// Próxima ocorrência depois de concluir. Conta paga ANTES do vencimento
+  /// avança a partir do vencimento (senão a de hoje reapareceria no mesmo mês).
+  DateTime _nextAfterDone(Task t, Recurrence rule, DateTime n) {
+    final today = dateOnly(n);
+    final due = t.due;
+    final base = (t.module == kModFinance && due != null && due.isAfter(today)) ? due : today;
+    return rule.nextAfter(base);
+  }
+
+  /// Registro que concluir uma tarefa de módulo deixa no próprio módulo:
+  /// treino feito (exercícios) ou pagamento (finanças).
+  Entry? _moduleLogFor(Task t, DateTime n) {
+    final Map<String, Object?> data;
+    switch (t.module) {
+      case kModExercise:
+        data = <String, Object?>{'kind': t.title, 'notes': '', 'routine': t.id};
+      case kModFinance:
+        data = <String, Object?>{
+          'desc': t.title,
+          'cents': t.amountCents ?? 0,
+          'cat': kBillCategory,
+          'bill': t.id,
+        };
+      default:
+        return null;
+    }
+    return Entry(id: newId('e'), module: t.module!, at: n, data: data, createdAt: n);
   }
 
   /// Adia a tarefa para [until] (data e hora). Ela continua pendente e passa a
@@ -509,7 +533,7 @@ class AppState extends ChangeNotifier {
     final rule = t.recurrence;
     if (rule == null || !canComplete(t)) return false;
     _remember(t);
-    t.due = rule.nextAfter(dateOnly(now));
+    t.due = _nextAfterDone(t, rule, now);
     t.status = TaskStatus.pending;
     t.snoozedUntil = null;
     t.updatedAt = now;
@@ -702,6 +726,47 @@ class AppState extends ChangeNotifier {
   void resumeMedication(Medication m) {
     final data = m.rebased(now)..['active'] = true;
     updateEntry(m.entry, data: data);
+  }
+
+  // ------------------------------------------------------------------ finanças
+
+  /// Gastos e pagamentos registrados (mais recentes primeiro).
+  List<Entry> get expenses => entriesOf(kModFinance);
+
+  /// Gastos e pagamentos do mês de [month].
+  List<Entry> expensesIn(DateTime month) => expenses
+      .where((e) => e.at.year == month.year && e.at.month == month.month)
+      .toList();
+
+  int totalCents(Iterable<Entry> list) =>
+      list.fold<int>(0, (sum, e) => sum + (e.number('cents') ?? 0));
+
+  /// Total por categoria, da maior para a menor.
+  List<MapEntry<String, int>> byCategory(Iterable<Entry> list) {
+    final map = <String, int>{};
+    for (final e in list) {
+      final cat = e.text('cat').isEmpty ? kOtherCategory : e.text('cat');
+      map[cat] = (map[cat] ?? 0) + (e.number('cents') ?? 0);
+    }
+    return map.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+  }
+
+  /// Contas a pagar ativas, pela data de vencimento.
+  List<Task> get bills {
+    final list = tasks.where((t) => t.module == kModFinance && isActive(t)).toList()
+      ..sort(_compare);
+    return list;
+  }
+
+  /// Soma do que ainda falta pagar até o fim do mês de [month] (inclui atrasadas).
+  int billsDueCents(DateTime month) {
+    final end = DateTime(month.year, month.month + 1, 0);
+    var sum = 0;
+    for (final t in bills) {
+      final d = t.dueDate;
+      if (d != null && !dateOnly(d).isAfter(end)) sum += t.amountCents ?? 0;
+    }
+    return sum;
   }
 
   // ---------------------------------------------------------------------- água
