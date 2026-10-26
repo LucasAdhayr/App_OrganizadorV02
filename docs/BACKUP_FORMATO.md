@@ -16,14 +16,14 @@ JSON em UTF-8, com recuo de 2 espaços. Pensado para ser lido por um HTML/planil
                  "rec_weekdays": "1,3", "rec_interval": 1, "rec_day": 1, "rec_month": 1,
                  "notes": "", "created_at": 1760000000000, "updated_at": 1760000000000,
                  "snoozed_until": null, "last_done_at": null,
-                 "module": null, "alarm": 0 } ],
+                 "module": null, "alarm": 0, "amount_cents": null } ],
   "history": [ { "id": "...", "at": 1760000000000, "kind": "done", "task_id": "...",
                  "task_title": "...", "detail": "" } ],
   "notes":   [ { "id": "...", "text": "...", "created_at": 1760000000000,
                  "is_idea": 0, "converted": 0, "deleted_at": null } ],
   "dates":   [ { "id": "...", "title": "Aniversário da Ana", "kind": "birthday|date",
                  "month": 3, "day": 8, "year": 1990, "notes": "", "created_at": 1760000000000 } ],
-  "entries": [ { "id": "...", "module": "agua|alimentacao|exercicios|livros", "at": 1760000000000,
+  "entries": [ { "id": "...", "module": "agua|alimentacao|exercicios|livros|medicamentos|financas", "at": 1760000000000,
                  "data": { "...campos do módulo..." },
                  "created_at": 1760000000000, "updated_at": 1760000000000, "deleted_at": null } ]
 }
@@ -43,8 +43,10 @@ JSON em UTF-8, com recuo de 2 espaços. Pensado para ser lido por um HTML/planil
 - `exercicios`: `{ "kind": "Caminhada", "minutes": 40, "notes": "..." }` (`minutes` e `notes` opcionais).
 - `livros`: `{ "title": "...", "author": "...", "total": 320, "page": 120, "status": "lendo|quero|lido" }` (`total` opcional).
 - `medicamentos`: `{ "name": "...", "times": "08:00,20:00", "perDose": 1, "stock": 30, "stockAt": 1760000000000, "active": true }`. `stock` é a quantidade que havia em `stockAt`; o estoque atual é calculado descontando `perDose` a cada horário passado desde então. `active: false` = parei de tomar.
+- `financas`: `{ "desc": "Mercado", "cents": 2590, "cat": "Mercado|Transporte|Casa|Saúde|Lazer|Outros|Contas", "bill": "<id da conta, se foi um pagamento>" }` (`at` é quando foi gasto/pago).
 A chave `entries` é opcional em backups antigos; `settings.waterGoalMl` é a meta diária de água em ml (`waterGoal`, em copos, é o formato antigo e ainda é lido).
 
 ## Tarefas: campos novos
 - `module`: módulo dono da tarefa (`exercicios` para rotinas de exercício) ou `null`.
 - `alarm`: `1` = toca como alarme; `0` ou ausente = notificação comum.
+- `amount_cents`: valor da conta em centavos (módulo `financas`) ou `null`.
