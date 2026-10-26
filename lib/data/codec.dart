@@ -59,6 +59,7 @@ Map<String, Object?> taskToMap(Task t) {
     'module': t.module,
     'alarm': t.alarm ? 1 : 0,
     'amount_cents': t.amountCents,
+    'ref': t.ref,
   };
 }
 
@@ -95,6 +96,7 @@ Task taskFromMap(Map<String, Object?> m) {
     module: m['module'] as String?,
     alarm: m['alarm'] == 1 || m['alarm'] == true,
     amountCents: (m['amount_cents'] as num?)?.toInt(),
+    ref: m['ref'] as String?,
   );
 }
 

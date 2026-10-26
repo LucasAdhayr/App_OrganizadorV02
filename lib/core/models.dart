@@ -122,6 +122,7 @@ class Task {
     this.module,
     this.alarm = false,
     this.amountCents,
+    this.ref,
   }) : updatedAt = updatedAt ?? createdAt;
 
   final String id;
@@ -139,6 +140,9 @@ class Task {
 
   /// Valor em centavos (contas a pagar do módulo FINANÇAS). null = sem valor.
   int? amountCents;
+
+  /// Id do registro a que a tarefa pertence (ex.: a disciplina de uma prova).
+  String? ref;
 
   /// Prazo (ou próxima ocorrência, se recorrente). Só a data.
   DateTime? due;
@@ -179,6 +183,7 @@ class Task {
         module: module,
         alarm: alarm,
         amountCents: amountCents,
+        ref: ref,
       );
 
   void restoreFrom(Task o) {
@@ -194,6 +199,7 @@ class Task {
     lastDoneAt = o.lastDoneAt;
     alarm = o.alarm;
     amountCents = o.amountCents;
+    ref = o.ref;
   }
 }
 

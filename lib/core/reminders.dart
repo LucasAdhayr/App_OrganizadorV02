@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart' show TimeOfDay;
 
+import 'course.dart';
 import 'dates.dart';
 import 'entry.dart';
 import 'medication.dart';
@@ -110,6 +111,7 @@ List<Reminder> planReminders(
   Iterable<SpecialDate> dates = const <SpecialDate>[],
   WaterPlan? water,
   Iterable<Medication> meds = const <Medication>[],
+  Iterable<Course> courses = const <Course>[],
   int limit = kMaxReminders,
 }) {
   final today = dateOnly(now);
@@ -241,6 +243,32 @@ List<Reminder> planReminders(
           title: m.name,
           body: 'Hora de tomar: ${m.perDose} ${m.perDose == 1 ? 'unidade' : 'unidades'}',
           alarm: true,
+        ));
+      }
+    }
+  }
+
+  // Aulas: um aviso por horário semanal, com a antecedência escolhida.
+  for (final c in courses) {
+    final lead = c.lead;
+    if (lead < 0) continue;
+    final ss = c.slots;
+    for (var d = 0; d < kClassDaysAhead; d++) {
+      final day = DateTime(today.year, today.month, today.day + d);
+      for (final s in ss) {
+        if (s.weekday != day.weekday) continue;
+        final start = DateTime(day.year, day.month, day.day, s.time.hour, s.time.minute);
+        final at = _applySilence(start.subtract(Duration(minutes: lead)));
+        if (!at.isAfter(now)) continue;
+        emit(Reminder(
+          id: (_fnv('c:${c.id}:${_ordinal(day)}:${s.key}') & 0x1fffffff) + 1000000000,
+          taskId: 'class:${c.id}',
+          at: at,
+          title: c.name,
+          body: lead > 0
+              ? 'Aula às ${fmtTime(s.time)} (em $lead min)'
+              : 'Aula às ${fmtTime(s.time)}',
+          alarm: c.alarm,
         ));
       }
     }

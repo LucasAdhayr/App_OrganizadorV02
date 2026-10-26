@@ -43,7 +43,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
   String? get _module => widget.edit?.module ?? widget.module;
   bool get _isExercise => _module == kModExercise;
   bool get _isFinance => _module == kModFinance;
-  String get _moduleLabel => _isExercise ? 'Exercício' : (_isFinance ? 'Conta' : 'Rotina');
+  String get _moduleLabel => _isExercise ? 'Exercício' : (_isFinance ? 'Conta' : 'Título');
   late RecurrenceType _rtype;
   late Set<int> _weekdays;
   DateTime? _due;

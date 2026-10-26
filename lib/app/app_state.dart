@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../core/course.dart';
 import '../core/dates.dart';
 import '../core/entry.dart';
 import '../core/medication.dart';
@@ -104,6 +105,7 @@ class AppState extends ChangeNotifier {
             ? WaterPlan(goalMl: waterGoalMl, mlOn: waterMlOn)
             : null,
         meds: medications,
+        courses: courses,
       );
 
   /// Resumo do último plano enviado ao sistema. Se o plano novo for igual, não
@@ -726,6 +728,159 @@ class AppState extends ChangeNotifier {
   void resumeMedication(Medication m) {
     final data = m.rebased(now)..['active'] = true;
     updateEntry(m.entry, data: data);
+  }
+
+  // ------------------------------------------------------------------- aulas
+
+  /// Todas as disciplinas, por nome.
+  List<Course> get courses {
+    final list = entries.where((e) => e.module == kModClass).map(Course.new).toList()
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    return list;
+  }
+
+  Course? courseById(String id) {
+    for (final e in entries) {
+      if (e.module == kModClass && e.id == id) return Course(e);
+    }
+    return null;
+  }
+
+  Course addCourse({
+    required String name,
+    required List<ClassSlot> slots,
+    required int lead,
+    required bool alarm,
+    required int maxAbsences,
+    required int pass,
+  }) {
+    final e = addEntry(kModClass, data: <String, Object?>{
+      'name': name,
+      'slots': joinSlots(slots),
+      'lead': lead,
+      'alarm': alarm,
+      'maxAbs': maxAbsences,
+      'abs': 0,
+      'pass': pass,
+    });
+    return Course(e);
+  }
+
+  /// Muda os dados da disciplina sem perder notas e faltas.
+  void editCourse(
+    Course c, {
+    required String name,
+    required List<ClassSlot> slots,
+    required int lead,
+    required bool alarm,
+    required int maxAbsences,
+    required int pass,
+  }) {
+    final data = Map<String, Object?>.of(c.entry.data)
+      ..['name'] = name
+      ..['slots'] = joinSlots(slots)
+      ..['lead'] = lead
+      ..['alarm'] = alarm
+      ..['maxAbs'] = maxAbsences
+      ..['pass'] = pass;
+    updateEntry(c.entry, data: data);
+    // Provas e trabalhos levam o nome da disciplina no título.
+    for (final t in assignmentsOf(c.id, includeClosed: true)) {
+      final type = t.title.split(':').first;
+      t.title = '$type: $name';
+      _saveTask(t);
+    }
+    notifyListeners();
+  }
+
+  /// +1 / -1 falta (nunca abaixo de zero).
+  void addAbsence(Course c, int delta) {
+    final data = Map<String, Object?>.of(c.entry.data)
+      ..['abs'] = (c.absences + delta).clamp(0, 9999);
+    updateEntry(c.entry, data: data);
+  }
+
+  /// Define a nota [key] ('p1' ou 'p2'); null apaga.
+  void setGrade(Course c, String key, int? hundredths) {
+    final data = Map<String, Object?>.of(c.entry.data);
+    if (hundredths == null) {
+      data.remove(key);
+    } else {
+      data[key] = hundredths.clamp(0, 1000);
+    }
+    updateEntry(c.entry, data: data);
+  }
+
+  /// Provas e trabalhos da disciplina (ativos, pela data; com [includeClosed],
+  /// também os já feitos).
+  List<Task> assignmentsOf(String courseId, {bool includeClosed = false}) {
+    final list = tasks
+        .where((t) =>
+            t.module == kModClass &&
+            t.ref == courseId &&
+            (includeClosed || isActive(t)))
+        .toList()
+      ..sort(_compare);
+    return list;
+  }
+
+  /// Provas e trabalhos ativos de todas as disciplinas, pela data.
+  List<Task> get allAssignments {
+    final list = tasks.where((t) => t.module == kModClass && isActive(t)).toList()
+      ..sort(_compare);
+    return list;
+  }
+
+  /// Cria uma prova ou um trabalho. O título é "Prova: Máquinas de Fluxo" e a
+  /// descrição fica nas notas.
+  Task addAssignment(
+    Course c, {
+    required String type,
+    required String description,
+    required DateTime due,
+    TimeOfDay? time,
+    bool alarm = false,
+  }) {
+    final t = Task(
+      id: newId('t'),
+      title: '$type: ${c.name}',
+      kind: TaskKind.single,
+      createdAt: now,
+      due: dateOnly(due),
+      time: time,
+      notes: description,
+      module: kModClass,
+      ref: c.id,
+      alarm: alarm,
+    );
+    saveTask(t, isNew: true);
+    return t;
+  }
+
+  /// Aulas de [day], por horário.
+  List<ClassOccurrence> classesOn(DateTime day) {
+    final out = <ClassOccurrence>[];
+    for (final c in courses) {
+      for (final t in c.timesOn(day)) {
+        out.add(ClassOccurrence(c, t));
+      }
+    }
+    out.sort((a, b) =>
+        (a.time.hour * 60 + a.time.minute).compareTo(b.time.hour * 60 + b.time.minute));
+    return out;
+  }
+
+  /// Apaga a disciplina; as provas e trabalhos dela são descartados (ficam no
+  /// histórico e podem ser reabertos).
+  void deleteCourse(Course c) {
+    for (final t in assignmentsOf(c.id)) {
+      t.status = TaskStatus.discarded;
+      t.snoozedUntil = null;
+      t.updatedAt = now;
+      _log(HistoryKind.discarded, t);
+      _saveTask(t);
+    }
+    removeEntry(c.entry);
   }
 
   // ------------------------------------------------------------------ finanças

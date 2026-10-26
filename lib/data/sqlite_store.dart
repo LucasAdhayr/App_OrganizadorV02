@@ -16,7 +16,7 @@ class SqliteStore implements AppStore {
 
   final Database _db;
 
-  static const int _version = 6;
+  static const int _version = 7;
   static const String fileName = 'organizador.db';
 
   /// Abre (ou cria) o banco. [path] só é usado em testes.
@@ -53,7 +53,8 @@ class SqliteStore implements AppStore {
         last_done_at INTEGER,
         module TEXT,
         alarm INTEGER NOT NULL DEFAULT 0,
-        amount_cents INTEGER
+        amount_cents INTEGER,
+        ref TEXT
       )
     ''');
     batch.execute('''
@@ -123,6 +124,7 @@ class SqliteStore implements AppStore {
   /// v4: coluna `module` nas tarefas (rotinas de exercício).
   /// v5: coluna `alarm` nas tarefas (toca como alarme).
   /// v6: coluna `amount_cents` nas tarefas (contas a pagar).
+  /// v7: coluna `ref` nas tarefas (liga provas/trabalhos à disciplina).
   static Future<void> _upgrade(Database db, int from, int to) async {
     if (from < 2) await db.execute(_datesSql);
     if (from < 3) {
@@ -134,6 +136,7 @@ class SqliteStore implements AppStore {
       await db.execute('ALTER TABLE tasks ADD COLUMN alarm INTEGER NOT NULL DEFAULT 0');
     }
     if (from < 6) await db.execute('ALTER TABLE tasks ADD COLUMN amount_cents INTEGER');
+    if (from < 7) await db.execute('ALTER TABLE tasks ADD COLUMN ref TEXT');
   }
 
   Future<void> close() => _db.close();

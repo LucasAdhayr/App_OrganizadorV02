@@ -5,6 +5,7 @@ import '../../core/dates.dart';
 import '../../core/models.dart';
 import '../task_tile.dart';
 import '../term_widgets.dart';
+import 'classes_screen.dart';
 import 'dates_screen.dart';
 import 'medication_screen.dart';
 import 'review_screen.dart';
@@ -30,6 +31,7 @@ class _TodayScreenState extends State<TodayScreen> {
     final reviewCount = s.reviewQueue.length;
     final soonDates = s.upcomingDates();
     final lowMeds = s.lowMedications;
+    final classes = s.classesOn(n);
 
     final planned = s.doneToday() + v.agora.length + v.hoje.length;
     final done = s.doneToday();
@@ -80,6 +82,17 @@ class _TodayScreenState extends State<TodayScreen> {
             ),
           ),
         ],
+        if (classes.isNotEmpty) ...[
+          SectionHeader('AULAS DE HOJE', count: classes.length),
+          for (final o in classes)
+            TermRow(
+              key: ValueKey('today-class-${o.course.id}-${o.time.hour}:${o.time.minute}'),
+              title: o.course.name,
+              subtitle: o.course.absencesWarn ? '[!] faltas ${o.course.absencesText}' : null,
+              trailing: fmtTime(o.time),
+              onTap: () => openCourse(context, o.course),
+            ),
+        ],
         if (lowMeds.isNotEmpty) ...[
           SectionHeader('ESTOQUE DE REMÉDIO', count: lowMeds.length),
           for (final m in lowMeds)
@@ -96,7 +109,7 @@ class _TodayScreenState extends State<TodayScreen> {
           for (final d in soonDates) DateRow(key: ValueKey('today-date-${d.id}'), date: d),
         ],
         if (v.isEmpty)
-          (soonDates.isEmpty && lowMeds.isEmpty ? _EmptyState(hasReview: reviewCount > 0) : const SizedBox.shrink())
+          (soonDates.isEmpty && lowMeds.isEmpty && classes.isEmpty ? _EmptyState(hasReview: reviewCount > 0) : const SizedBox.shrink())
         else
           ...rows,
         if (hidden > 0) ...[

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app/app_state.dart';
+import '../core/course.dart';
 import '../core/entry.dart';
 import '../core/labels.dart';
 import '../core/models.dart';
@@ -29,6 +30,7 @@ class TaskTile extends StatelessWidget {
       if (t.module == kModExercise) 'EXERCÍCIO',
       if (t.module == kModFinance)
         t.amountCents == null ? 'CONTA' : 'CONTA ${fmtMoney(t.amountCents!)}',
+      if (t.module == kModClass) t.notes.trim().isEmpty ? 'AULA' : firstLine(t.notes, 40),
       if (t.alarm) 'ALARME',
     ].join(' · ');
 

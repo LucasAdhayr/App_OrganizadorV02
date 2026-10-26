@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../ui/screens/date_form_screen.dart';
 import '../ui/screens/dates_screen.dart';
 import '../ui/screens/books_screen.dart';
+import '../ui/screens/classes_screen.dart';
 import '../ui/screens/exercise_screen.dart';
 import '../ui/screens/finance_screen.dart';
 import '../ui/screens/food_screen.dart';
@@ -62,6 +63,7 @@ Widget _foodScreen(BuildContext context) => const FoodScreen();
 Widget _exerciseScreen(BuildContext context) => const ExerciseScreen();
 Widget _booksScreen(BuildContext context) => const BooksScreen();
 Widget _medScreen(BuildContext context) => const MedicationScreen();
+Widget _classesScreen(BuildContext context) => const ClassesScreen();
 Widget _financeScreen(BuildContext context) => const FinanceScreen();
 
 Future<void> _logWater(BuildContext context) async => logWater(context);
@@ -69,6 +71,7 @@ Future<void> _addMeal(BuildContext context) => showMealSheet(context);
 Future<void> _addExercise(BuildContext context) => addExerciseChoice(context);
 Future<void> _addBook(BuildContext context) => showBookSheet(context);
 Future<void> _addMed(BuildContext context) => showMedicationSheet(context);
+Future<void> _addClass(BuildContext context) => addClassChoice(context);
 Future<void> _addFinance(BuildContext context) => addFinanceChoice(context);
 
 const List<ModuleDef> kModules = [
@@ -80,6 +83,15 @@ const List<ModuleDef> kModules = [
     screen: _tasksScreen,
     form: _taskForm,
     addLabel: 'TAREFA',
+  ),
+  ModuleDef(
+    id: 'aulas',
+    label: 'AULAS',
+    icon: Icons.school_outlined,
+    blurb: 'Horários, notas, faltas, provas e trabalhos',
+    screen: _classesScreen,
+    quickAdd: _addClass,
+    addLabel: 'AULA (DISCIPLINA, PROVA)',
   ),
   ModuleDef(
     id: 'aniversarios',
