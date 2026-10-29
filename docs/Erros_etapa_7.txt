@@ -1,0 +1,59 @@
+Got dependencies!
+18 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+Analyzing App_OrganizadorV02...
+
+   info - Dangling library doc comment. Add a 'library' directive after the library comment - lib\core\money.dart:2:1 -
+          dangling_library_doc_comments
+  error - Too many positional arguments: 1 expected, but 2 found. Try removing the extra positional arguments, or
+         specifying the name for named arguments - lib\ui\screens\classes_screen.dart:21:49 -
+         extra_positional_arguments_could_be_named
+  error - Too many positional arguments: 1 expected, but 2 found. Try removing the extra positional arguments, or
+         specifying the name for named arguments - lib\ui\task_tile.dart:33:87 -
+         extra_positional_arguments_could_be_named
+   info - Use the null-aware marker '?' rather than a null check via an 'if'. Try using '?' -
+          test\classes_test.dart:41:9 - use_null_aware_elements
+   info - Use the null-aware marker '?' rather than a null check via an 'if'. Try using '?' -
+          test\classes_test.dart:42:9 - use_null_aware_elements
+
+5 issues found. (ran in 6.5s)
+00:09 +185: All tests passed!
+PS C:\dev\App_OrganizadorV02> flutter run
+Launching lib\main.dart on M2007J20CG in debug mode...
+WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::load has been called by net.rubygrapefruit.platform.internal.NativeLibraryLoader in an unnamed module (file:/C:/Users/lucas/.gradle/wrapper/dists/gradle-9.3.1-all/9ot9r568e8zfvvd4mn8rbu1j0/gradle-9.3.1/lib/native-platform-0.22-milestone-29.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+lib/ui/task_tile.dart:33:77: Error: Too many positional arguments: 1 allowed, but 2 found.
+Try removing the extra positional arguments.
+      if (t.module == kModClass) t.notes.trim().isEmpty ? 'AULA' : firstLine(t.notes, 40),
+                                                                            ^
+lib/core/labels.dart:32:8: Context: Found this candidate, but the arguments don't match.
+String firstLine(String text, {int max = 80}) {
+       ^^^^^^^^^
+lib/ui/screens/classes_screen.dart:21:39: Error: Too many positional arguments: 1 allowed, but 2 found.
+Try removing the extra positional arguments.
+String _firstNote(Task t) => firstLine(t.notes, 60);
+                                      ^
+lib/core/labels.dart:32:8: Context: Found this candidate, but the arguments don't match.
+String firstLine(String text, {int max = 80}) {
+       ^^^^^^^^^
+Target kernel_snapshot_program failed: Exception
+
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileFlutterBuildDebug'.
+> Process 'command 'C:\src\flutter\bin\flutter.bat'' finished with non-zero exit value 1
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 3m 15s
+Running Gradle task 'assembleDebug'...                            196,5s
+Error: Gradle task assembleDebug failed with exit code 1
