@@ -30,7 +30,7 @@ class TaskTile extends StatelessWidget {
       if (t.module == kModExercise) 'EXERCÍCIO',
       if (t.module == kModFinance)
         t.amountCents == null ? 'CONTA' : 'CONTA ${fmtMoney(t.amountCents!)}',
-      if (t.module == kModClass) t.notes.trim().isEmpty ? 'AULA' : firstLine(t.notes, 40),
+      if (t.module == kModClass) t.notes.trim().isEmpty ? 'AULA' : firstLine(t.notes, max: 40),
       if (t.alarm) 'ALARME',
     ].join(' · ');
 

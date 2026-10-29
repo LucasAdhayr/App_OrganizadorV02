@@ -18,7 +18,7 @@ String _leadLabel(int lead) => switch (lead) {
       _ => '$lead min antes',
     };
 
-String _firstNote(Task t) => firstLine(t.notes, 60);
+String _firstNote(Task t) => firstLine(t.notes, max: 60);
 
 // ------------------------------------------------------------ disciplina (form)
 

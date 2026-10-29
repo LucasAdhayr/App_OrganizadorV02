@@ -38,8 +38,8 @@ Course _course({
         'maxAbs': maxAbs,
         'abs': abs,
         'pass': pass,
-        if (p1 != null) 'p1': p1,
-        if (p2 != null) 'p2': p2,
+        'p1': ?p1,
+        'p2': ?p2,
       },
     ));
 

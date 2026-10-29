@@ -1,5 +1,5 @@
-/// Dinheiro sempre em centavos inteiros (nada de double: 0,1 + 0,2 não vira
-/// 0,30000000000000004).
+// Dinheiro sempre em centavos inteiros (nada de double: 0,1 + 0,2 não vira
+// 0,30000000000000004).
 
 /// 123456 -> "R$ 1.234,56"; 5 -> "R$ 0,05"; negativo vira "-R$ ...".
 String fmtMoney(int cents) {
