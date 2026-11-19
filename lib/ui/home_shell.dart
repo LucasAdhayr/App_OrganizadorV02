@@ -23,7 +23,7 @@ class HomeShell extends StatefulWidget {
 }
 
 class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
-  static const List<String> _titles = ['HOJE', 'AGENDA', 'ENTRADA', 'MÓDULOS'];
+  static const List<String> _titles = ['MNEMO', 'AGENDA', 'ENTRADA', 'MÓDULOS'];
   static const List<Widget> _screens = [
     TodayScreen(),
     AgendaScreen(),

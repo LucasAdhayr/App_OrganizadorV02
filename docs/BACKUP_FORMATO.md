@@ -23,7 +23,7 @@ JSON em UTF-8, com recuo de 2 espaços. Pensado para ser lido por um HTML/planil
                  "is_idea": 0, "converted": 0, "deleted_at": null } ],
   "dates":   [ { "id": "...", "title": "Aniversário da Ana", "kind": "birthday|date",
                  "month": 3, "day": 8, "year": 1990, "notes": "", "created_at": 1760000000000 } ],
-  "entries": [ { "id": "...", "module": "agua|alimentacao|exercicios|livros|medicamentos|financas|aulas", "at": 1760000000000,
+  "entries": [ { "id": "...", "module": "agua|alimentacao|exercicios|livros|medicamentos|financas|aulas|doses|anotacoes_livro", "at": 1760000000000,
                  "data": { "...campos do módulo..." },
                  "created_at": 1760000000000, "updated_at": 1760000000000, "deleted_at": null } ]
 }

@@ -173,13 +173,14 @@ void main() {
 
   group('alarmes', () {
     test('todo remédio ativo gera alarmes pelos próximos dias', () {
-      final r = planReminders(const <Task>[], _clock, meds: [_med()]);
-      expect(r.every((x) => x.alarm), isTrue);
+      final all = planReminders(const <Task>[], _clock, meds: [_med()]);
+      final r = all.where((x) => x.body.startsWith('Hora')).toList();
+      expect(all.every((x) => x.alarm), isTrue);
       expect(r.first.at, DateTime(2026, 10, 13, 20, 0));
       // Hoje: só 20:00. Mais os outros dias da janela, com 2 horários.
       expect(r.length, 1 + (kMedDaysAhead - 1) * 2);
       expect(r.first.title, 'Vitamina');
-      expect(r.map((x) => x.id).toSet().length, r.length);
+      expect(all.map((x) => x.id).toSet().length, all.length);
     });
 
     test('remédio parado não toca', () {
@@ -257,6 +258,64 @@ void main() {
       final t = Task(id: 'a', title: 'x', kind: TaskKind.single, createdAt: _clock);
       final m = taskToMap(t)..remove('alarm');
       expect(taskFromMap(m).alarm, isFalse);
+    });
+  });
+
+  group('doses', () {
+    test('dose vencida sem marcação fica pendente e o alarme insiste de 10 em 10', () {
+      final m = _med();
+      final pend = m.pendingDoses(_clock, <String>{});
+      expect(pend.map((d) => d.at), [DateTime(2026, 10, 13, 8, 0)]);
+
+      final all = planReminders(const <Task>[], _clock, meds: [m]);
+      final nags = all.where((x) => x.body.startsWith('Ainda')).toList();
+      expect(nags, isNotEmpty);
+      expect(nags.first.at, DateTime(2026, 10, 13, 10, 10));
+      expect(nags.every((x) => x.alarm), isTrue);
+    });
+
+    test('dose marcada não insiste mais', () {
+      final m = _med();
+      final done = <String>{doseKey('m1', DateTime(2026, 10, 13, 8, 0))};
+      expect(m.pendingDoses(_clock, done), isEmpty);
+      final all = planReminders(const <Task>[], _clock, meds: [m], resolvedDoses: done);
+      expect(
+        all.where((x) => x.body.startsWith('Ainda') && x.at.day == 13 && x.at.hour < 20),
+        isEmpty,
+      );
+    });
+
+    test('depois da meia-noite a dose vira "marcar depois"', () {
+      final m = _med();
+      final next = DateTime(2026, 10, 14, 0, 5);
+      final pend = m.pendingDoses(next, <String>{});
+      expect(pend.length, 2);
+      expect(pend.where((d) => d.isLate(next)).length, 2);
+      final all = planReminders(const <Task>[], next, meds: [m]);
+      expect(all.where((x) => x.body.startsWith('Ainda') && x.at.day == 13), isEmpty);
+    });
+
+    test('AppState: tomei e não tomei fecham a pendência; desfazer reabre', () {
+      final s = _app();
+      final med = s.addMedication(
+        name: 'X',
+        times: const [TimeOfDay(hour: 9, minute: 0)],
+        perDose: 1,
+        stock: 5,
+      );
+      expect(s.pendingDoses.length, 0);
+      _clock = DateTime(2026, 10, 14, 9, 30);
+      expect(s.pendingDoses.length, 1);
+      final dose = s.pendingDoses.first;
+      s.markDose(med, dose.at, taken: true);
+      expect(s.pendingDoses, isEmpty);
+      expect(s.doseStatus(med, dose.at), 'taken');
+      s.unmarkDose(med, dose.at);
+      expect(s.pendingDoses.length, 1);
+      s.markDose(med, dose.at, taken: false);
+      expect(s.pendingDoses, isEmpty);
+      expect(s.doseStatus(med, dose.at), 'skipped');
+      _clock = DateTime(2026, 10, 13, 10, 0);
     });
   });
 }

@@ -10,7 +10,7 @@
     <!-- Pedir para o app não ser contido pela economia de bateria (alarmes). -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
     <application
-        android:label="Organizador"
+        android:label="MNEMO"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

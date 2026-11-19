@@ -106,6 +106,7 @@ class AppState extends ChangeNotifier {
             : null,
         meds: medications,
         courses: courses,
+        resolvedDoses: resolvedDoseKeys,
       );
 
   /// Resumo do último plano enviado ao sistema. Se o plano novo for igual, não
@@ -728,6 +729,53 @@ class AppState extends ChangeNotifier {
   void resumeMedication(Medication m) {
     final data = m.rebased(now)..['active'] = true;
     updateEntry(m.entry, data: data);
+  }
+
+  // ------------------------------------------------------------------- doses
+
+  /// Chaves (`doseKey`) das doses já marcadas (tomei ou não tomei).
+  Set<String> get resolvedDoseKeys => <String>{
+        for (final e in entries)
+          if (e.module == kModDose) e.text('key'),
+      };
+
+  /// Doses vencidas e ainda sem marcação, da mais antiga para a mais nova.
+  List<PendingDose> get pendingDoses {
+    final resolved = resolvedDoseKeys;
+    final out = <PendingDose>[
+      for (final m in medications) ...m.pendingDoses(now, resolved),
+    ]..sort((a, b) => a.at.compareTo(b.at));
+    return out;
+  }
+
+  /// Marca a dose: [taken] true = tomei, false = não tomei (fecha a pendência
+  /// sem contar como tomada).
+  void markDose(Medication m, DateTime at, {required bool taken}) {
+    final key = doseKey(m.id, at);
+    if (resolvedDoseKeys.contains(key)) return;
+    addEntry(kModDose, at: at, data: <String, Object?>{
+      'med': m.id,
+      'key': key,
+      'status': taken ? 'taken' : 'skipped',
+    });
+  }
+
+  /// Desfaz a marcação de uma dose (volta a ficar pendente).
+  void unmarkDose(Medication m, DateTime at) {
+    final key = doseKey(m.id, at);
+    final found = entries.where((e) => e.module == kModDose && e.text('key') == key).toList();
+    for (final e in found) {
+      removeEntry(e);
+    }
+  }
+
+  /// Status gravado de uma dose: 'taken', 'skipped' ou null.
+  String? doseStatus(Medication m, DateTime at) {
+    final key = doseKey(m.id, at);
+    for (final e in entries) {
+      if (e.module == kModDose && e.text('key') == key) return e.text('status');
+    }
+    return null;
   }
 
   // ------------------------------------------------------------------- aulas

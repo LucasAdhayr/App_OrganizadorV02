@@ -63,6 +63,9 @@ const List<(int, double, String)> kWaterSlots = [
 /// duas semanas cobrem uma boa viagem sem abrir o app.
 const int kMedDaysAhead = 14;
 
+/// Limite dos toques repetidos ("ainda não tomou") de todos os remédios.
+const int kMaxNags = 120;
+
 /// Quantos dias à frente os avisos de água ficam agendados.
 const int kWaterDaysAhead = 3;
 
@@ -112,11 +115,13 @@ List<Reminder> planReminders(
   WaterPlan? water,
   Iterable<Medication> meds = const <Medication>[],
   Iterable<Course> courses = const <Course>[],
+  Set<String> resolvedDoses = const <String>{},
   int limit = kMaxReminders,
 }) {
   final today = dateOnly(now);
   final normal = <Reminder>[];
   final alarms = <Reminder>[];
+  final nags = <Reminder>[];
 
   void emit(Reminder r) => (r.alarm ? alarms : normal).add(r);
 
@@ -234,16 +239,42 @@ List<Reminder> planReminders(
     for (var d = 0; d < kMedDaysAhead; d++) {
       final day = DateTime(today.year, today.month, today.day + d);
       for (var i = 0; i < ts.length; i++) {
-        final at = _applySilence(DateTime(day.year, day.month, day.day, ts[i].hour, ts[i].minute));
-        if (!at.isAfter(now)) continue;
-        alarms.add(Reminder(
-          id: (_fnv('m:${m.id}:${_ordinal(day)}:$i') & 0x1fffffff) + 1000000000,
-          taskId: 'med:${m.id}',
-          at: at,
-          title: m.name,
-          body: 'Hora de tomar: ${m.perDose} ${m.perDose == 1 ? 'unidade' : 'unidades'}',
-          alarm: true,
-        ));
+        final raw = DateTime(day.year, day.month, day.day, ts[i].hour, ts[i].minute);
+        if (resolvedDoses.contains(doseKey(m.id, raw))) continue;
+        final at = _applySilence(raw);
+        final body = 'Hora de tomar: ${m.perDose} ${m.perDose == 1 ? 'unidade' : 'unidades'}';
+        if (at.isAfter(now)) {
+          alarms.add(Reminder(
+            id: (_fnv('m:${m.id}:${_ordinal(day)}:$i') & 0x1fffffff) + 1000000000,
+            taskId: 'med:${m.id}',
+            at: at,
+            title: m.name,
+            body: body,
+            alarm: true,
+          ));
+        }
+        // Insiste de 10 em 10 minutos até a meia-noite do mesmo dia (só hoje
+        // e amanhã; o plano é refeito sempre que o app abre ou uma dose é
+        // marcada).
+        if (d <= 1) {
+          final end = DateTime(day.year, day.month, day.day + 1);
+          var k = 1;
+          var nagAt = at.add(const Duration(minutes: kNagMinutes));
+          while (nagAt.isBefore(end)) {
+            if (nagAt.isAfter(now)) {
+              nags.add(Reminder(
+                id: (_fnv('n:${m.id}:${_ordinal(day)}:$i:$k') & 0x1fffffff) + 1000000000,
+                taskId: 'med:${m.id}',
+                at: nagAt,
+                title: m.name,
+                body: 'Ainda não marcou: $body',
+                alarm: true,
+              ));
+            }
+            k++;
+            nagAt = nagAt.add(const Duration(minutes: kNagMinutes));
+          }
+        }
       }
     }
   }
@@ -277,9 +308,11 @@ List<Reminder> planReminders(
   int byTime(Reminder a, Reminder b) => a.at.compareTo(b.at);
   normal.sort(byTime);
   alarms.sort(byTime);
+  nags.sort(byTime);
   final all = <Reminder>[
     ...(normal.length <= limit ? normal : normal.sublist(0, limit)),
     ...(alarms.length <= kMaxAlarms ? alarms : alarms.sublist(0, kMaxAlarms)),
+    ...(nags.length <= kMaxNags ? nags : nags.sublist(0, kMaxNags)),
   ]..sort(byTime);
 
   // Garantia final: dois lembretes nunca ficam com o mesmo número (o segundo

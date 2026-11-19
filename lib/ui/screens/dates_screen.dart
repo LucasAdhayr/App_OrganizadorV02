@@ -5,6 +5,7 @@ import '../../core/dates.dart';
 import '../../core/special_dates.dart';
 import '../actions.dart';
 import '../sheets.dart';
+import '../calendar_view.dart';
 import '../term_widgets.dart';
 import 'date_form_screen.dart';
 
@@ -96,6 +97,18 @@ class DateRow extends StatelessWidget {
   }
 }
 
+/// Datas que caem em [day] (29/02 cai em 28/02 nos anos sem 29).
+List<SpecialDate> _datesOn(List<SpecialDate> all, DateTime day) => all
+    .where((x) => nextOccurrence(x.month, x.day, DateTime(day.year, 1, 1)) == dateOnly(day))
+    .toList();
+
+String _ageOn(SpecialDate x, DateTime day) {
+  if (x.year == null) return 'aniversário';
+  final age = day.year - x.year!;
+  if (age < 0) return 'aniversário';
+  return age == 0 ? 'nasceu neste dia' : (age == 1 ? 'faz 1 ano' : 'faz $age anos');
+}
+
 /// Módulo ANIVERSÁRIOS: todas as datas, da mais próxima para a mais distante.
 class DatesScreen extends StatelessWidget {
   const DatesScreen({super.key});
@@ -119,7 +132,40 @@ class DatesScreen extends StatelessWidget {
           ),
         ),
       ),
-      body: list.isEmpty
+      body: CalendarTabs(
+        startOnCalendar: true,
+        calendar: SquareCalendar(
+          startOnYear: true,
+          legend: 'aniversário ou data',
+          countOn: (d) => _datesOn(list, d).length,
+          onDay: (d) => showDaySheet(
+            context,
+            d,
+            [
+              for (final x in _datesOn(list, d))
+                TermRow(
+                  title: x.title,
+                  subtitle: x.kind == DateKind.birthday
+                      ? _ageOn(x, d)
+                      : x.kind.label.toLowerCase(),
+                  leading: SizedBox(
+                    width: 32,
+                    child: Icon(
+                      x.kind == DateKind.birthday ? Icons.cake_outlined : Icons.event,
+                      size: 20,
+                      color: AppScope.of(context).palette.fg,
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    showDateDetail(context, x);
+                  },
+                ),
+            ],
+            empty: 'Nenhuma data neste dia.',
+          ),
+        ),
+        list: list.isEmpty
           ? const EmptyState(
               title: '> Nenhuma data guardada.',
               subtitle: 'Aniversários e datas que se repetem todo ano.',
@@ -130,6 +176,7 @@ class DatesScreen extends StatelessWidget {
                 for (final d in list) DateRow(key: ValueKey('date-${d.id}-${d.title}'), date: d),
               ],
             ),
+      ),
     );
   }
 }

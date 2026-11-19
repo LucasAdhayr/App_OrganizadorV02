@@ -75,7 +75,7 @@ class _OrganizadorAppState extends State<OrganizadorApp> {
           final s = AppScope.of(context);
           final p = s.palette;
           return MaterialApp(
-            title: 'Organizador',
+            title: 'MNEMO',
             debugShowCheckedModeBanner: false,
             theme: _themeFor(p, s.effects),
             locale: const Locale('pt', 'BR'),

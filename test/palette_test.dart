@@ -18,7 +18,7 @@ void main() {
     test('ids e nomes são únicos', () {
       expect(AppPalette.all.map((p) => p.id).toSet().length, AppPalette.all.length);
       expect(AppPalette.all.map((p) => p.name).toSet().length, AppPalette.all.length);
-      expect(AppPalette.all.length, 5);
+      expect(AppPalette.all.length, 8);
     });
 
     test('todas têm contraste legível (texto principal e secundário)', () {
@@ -41,6 +41,17 @@ void main() {
       expect(EffectLevel.full.hasGrain, isFalse);
       expect(EffectLevel.soft.strong, isFalse);
       expect(EffectLevel.off.strong, isFalse);
+    });
+
+    test('fita e antigo são níveis próprios', () {
+      expect(EffectLevel.vhs.label, 'FITA');
+      expect(EffectLevel.vhs.hasTape, isTrue);
+      expect(EffectLevel.vhs.strong, isTrue);
+      expect(EffectLevel.antique.label, 'ANTIGO');
+      expect(EffectLevel.antique.isAntique, isTrue);
+      expect(EffectLevel.antique.strong, isFalse);
+      expect(EffectLevel.grain.hasTape, isFalse);
+      expect(EffectLevel.values.map((e) => e.name).toSet().length, EffectLevel.values.length);
     });
 
     test('paleta e efeito novos persistem', () async {

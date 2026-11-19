@@ -57,6 +57,11 @@ class _TodayScreenState extends State<TodayScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
       children: [
+        Text(
+          'ΜΝΗΜΟΣΥΝΗ · memória externa',
+          style: TextStyle(color: p.dim, fontSize: 11, letterSpacing: 2),
+        ),
+        const SizedBox(height: 6),
         Row(
           children: [
             Text(
@@ -82,6 +87,7 @@ class _TodayScreenState extends State<TodayScreen> {
             ),
           ),
         ],
+        ...pendingDoseWidgets(context),
         if (classes.isNotEmpty) ...[
           SectionHeader('AULAS DE HOJE', count: classes.length),
           for (final o in classes)
@@ -109,7 +115,7 @@ class _TodayScreenState extends State<TodayScreen> {
           for (final d in soonDates) DateRow(key: ValueKey('today-date-${d.id}'), date: d),
         ],
         if (v.isEmpty)
-          (soonDates.isEmpty && lowMeds.isEmpty && classes.isEmpty ? _EmptyState(hasReview: reviewCount > 0) : const SizedBox.shrink())
+          (soonDates.isEmpty && lowMeds.isEmpty && classes.isEmpty && s.pendingDoses.isEmpty ? _EmptyState(hasReview: reviewCount > 0) : const SizedBox.shrink())
         else
           ...rows,
         if (hidden > 0) ...[

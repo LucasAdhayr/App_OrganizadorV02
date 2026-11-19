@@ -39,7 +39,14 @@ const String kModWater = 'agua';
 const String kModFood = 'alimentacao';
 const String kModExercise = 'exercicios';
 const String kModBook = 'livros';
+
+/// Anotação sobre um livro: `book` (id do livro), `text` e `page` (opcional).
+const String kModBookNote = 'anotacoes_livro';
 const String kModFinance = 'financas';
+
+/// Registro de dose de remédio: `med` (id), `key` (veja `doseKey`) e `status`
+/// ('taken' ou 'skipped').
+const String kModDose = 'doses';
 
 /// Categorias de gasto (a última é o "resto"). Pagar uma conta registra-a em
 /// [kBillCategory].

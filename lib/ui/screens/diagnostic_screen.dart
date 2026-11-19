@@ -193,10 +193,10 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> with WidgetsBinding
             ),
             const FieldLabel('Se não chegar (Xiaomi / Poco)'),
             Text(
-              '1. Configurações > Apps > Gerenciar apps > Organizador > '
+              '1. Configurações > Apps > Gerenciar apps > MNEMO > '
               'Início automático: ligar.\n'
               '2. Nessa mesma tela > Economizar bateria > Sem restrições.\n'
-              '3. Na tela de apps recentes, segure o card do Organizador e '
+              '3. Na tela de apps recentes, segure o card do MNEMO e '
               'toque no cadeado.\n'
               '4. Notificações do app: tudo ligado, inclusive "Lembretes de tarefas" e '
               '"Alarmes" (esta com som e tela de bloqueio permitidos).\n'

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../app/app_state.dart';
 import '../../core/entry.dart';
+import '../../core/labels.dart';
 import '../actions.dart';
 import '../sheets.dart';
 import '../term_widgets.dart';
@@ -27,8 +28,9 @@ String _pages(Entry e) {
   return 'pág. $page/$total (${(page * 100 / total).clamp(0, 100).round()}%)';
 }
 
-String? _subtitle(Entry e) {
+String? _subtitle(Entry e, [int notes = 0]) {
   final parts = [
+    if (notes > 0) '$notes ${notes == 1 ? 'anotação' : 'anotações'}',
     if (e.text('author').isNotEmpty) e.text('author'),
     if (_pages(e).isNotEmpty) _pages(e),
   ];
@@ -191,6 +193,19 @@ void _openBook(BuildContext context, Entry e) {
       BlockBar(value: _progress(e), cells: 16),
     ],
     extra: [
+      TermButton(
+        label: 'Anotações',
+        icon: Icons.edit_note,
+        expand: true,
+        primary: isDone,
+        onPressed: () {
+          Navigator.of(context).pop();
+          Navigator.of(context).push<void>(
+            MaterialPageRoute<void>(builder: (_) => BookNotesScreen(bookId: e.id)),
+          );
+        },
+      ),
+      gap(),
       if (!isDone) ...[
         TermButton(
           label: 'Atualizar página',
@@ -264,13 +279,153 @@ class BooksScreen extends StatelessWidget {
                     TermRow(
                       key: ValueKey('book-${e.id}-${e.updatedAt.millisecondsSinceEpoch}'),
                       title: e.text('title'),
-                      subtitle: _subtitle(e),
+                      subtitle: _subtitle(e, s.entries.where((n) => n.module == kModBookNote && n.text('book') == e.id).length),
                       trailing: _status[e.text('status')],
                       onTap: () => _openBook(context, e),
                     ),
                 ],
               ],
             ),
+    );
+  }
+}
+
+
+/// Anotação sobre um livro (ou edita [edit]): texto livre e, se quiser, a página.
+Future<void> showBookNoteSheet(BuildContext host, Entry book, {Entry? edit}) {
+  final s = AppScope.read(host);
+  final m = ScaffoldMessenger.of(host);
+  final text = TextEditingController(text: edit?.text('text') ?? '');
+  final page = TextEditingController(text: edit?.number('page')?.toString() ?? '');
+  var when = edit?.at ?? s.now;
+
+  return showTermSheet<void>(host, (c) {
+    return StatefulBuilder(
+      builder: (c, setSheet) {
+        void save() {
+          final t = text.text.trim();
+          if (t.isEmpty) return;
+          final pg = int.tryParse(page.text.trim());
+          final data = <String, Object?>{
+            'book': book.id,
+            'text': t,
+            if (pg != null && pg > 0) 'page': pg,
+          };
+          if (edit == null) {
+            s.addEntry(kModBookNote, at: when, data: data);
+          } else {
+            s.updateEntry(edit, at: when, data: data);
+          }
+          Navigator.of(c).pop();
+          toast(m, s.palette, edit == null ? 'Anotação salva.' : 'Alterações salvas.');
+        }
+
+        return SheetFrame(
+          title: edit == null ? 'Nova anotação' : 'Editar anotação',
+          children: [
+            Text(book.text('title'), style: TextStyle(color: s.palette.dim, fontSize: 13)),
+            gap(8),
+            TextField(
+              controller: text,
+              autofocus: edit == null,
+              minLines: 4,
+              maxLines: 12,
+              textCapitalization: TextCapitalization.sentences,
+              style: const TextStyle(fontSize: 15),
+              cursorColor: s.palette.fg,
+              decoration: termInput(c, hint: 'O que você viu, pensou ou quer lembrar'),
+            ),
+            gap(12),
+            const FieldLabel('Página (opcional)'),
+            TextField(
+              controller: page,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              style: const TextStyle(fontSize: 15),
+              cursorColor: s.palette.fg,
+              decoration: termInput(c, hint: 'Ex.: 42'),
+            ),
+            gap(12),
+            WhenButton(when: when, onChanged: (v) => setSheet(() => when = v)),
+            gap(12),
+            TermButton(label: 'Salvar', expand: true, primary: true, onPressed: save),
+          ],
+        );
+      },
+    );
+  });
+}
+
+/// Anotações de um livro, da mais recente para a mais antiga.
+class BookNotesScreen extends StatelessWidget {
+  const BookNotesScreen({super.key, required this.bookId});
+
+  final String bookId;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppScope.of(context);
+    final p = s.palette;
+    final books = s.entries.where((e) => e.id == bookId).toList();
+    if (books.isEmpty) {
+      return const TermScaffold(
+        title: 'Anotações',
+        body: EmptyHint('> Livro não encontrado.', 'Ele pode ter sido apagado.'),
+      );
+    }
+    final book = books.first;
+    final notes = s.entriesOf(kModBookNote).where((n) => n.text('book') == bookId).toList();
+
+    return TermScaffold(
+      title: 'Anotações',
+      bottom: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+        child: TermButton(
+          label: 'Nova anotação',
+          icon: Icons.add,
+          expand: true,
+          primary: true,
+          onPressed: () => showBookNoteSheet(context, book),
+        ),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        children: [
+          Text(book.text('title'),
+              style: TextStyle(color: p.fg, fontSize: 15, fontWeight: FontWeight.w800)),
+          if (book.text('author').isNotEmpty)
+            Text(book.text('author'), style: TextStyle(color: p.dim, fontSize: 13)),
+          const SizedBox(height: 8),
+          const TermDivider(),
+          if (notes.isEmpty)
+            const EmptyHint('> Nenhuma anotação ainda.', 'Registre o que viu no livro.')
+          else
+            for (final n in notes)
+              TermRow(
+                key: ValueKey('bnote-${n.id}-${n.updatedAt.millisecondsSinceEpoch}'),
+                title: firstLine(n.text('text'), max: 120),
+                subtitle: '${dayLabel(n.at, s.now)}'
+                    '${n.number('page') == null ? '' : ' · pág. ${n.number('page')}'}',
+                onTap: () => showEntryActions(
+                  context,
+                  n,
+                  title: 'Anotação',
+                  top: [
+                    SelectableText(n.text('text'),
+                        style: const TextStyle(fontSize: 15, height: 1.4)),
+                    gap(6),
+                    Text(
+                      '${dayLabel(n.at, s.now)}'
+                      '${n.number('page') == null ? '' : ' · pág. ${n.number('page')}'}',
+                      style: TextStyle(color: p.dim, fontSize: 12),
+                    ),
+                  ],
+                  onEdit: () => showBookNoteSheet(context, book, edit: n),
+                  deletedMessage: 'Anotação apagada.',
+                ),
+              ),
+        ],
+      ),
     );
   }
 }

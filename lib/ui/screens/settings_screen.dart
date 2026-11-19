@@ -53,6 +53,8 @@ class SettingsScreen extends StatelessWidget {
           Text(
             'SUAVE: linhas finas e brilho leve. COMPLETO: brilho forte, linhas '
             'marcadas e vinheta. GRANULADO: o completo com textura de filme. '
+            'FITA: fita de vídeo antiga, com faixas e riscos. ANTIGO: papel '
+            'envelhecido, com manchas e fibras. '
             'Tudo fixo: nada pisca nem se move. OFF desliga tudo.',
             style: dim,
           ),

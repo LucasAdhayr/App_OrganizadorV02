@@ -43,6 +43,53 @@ class _DashPainter extends CustomPainter {
   bool shouldRepaint(_DashPainter old) => old.color != color;
 }
 
+/// Friso grego (meandro): faixa decorativa sob o título de cada tela.
+class MeanderDivider extends StatelessWidget {
+  const MeanderDivider({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.pal;
+    return SizedBox(
+      height: 10,
+      width: double.infinity,
+      child: CustomPaint(painter: _MeanderPainter(p.dim.withValues(alpha: 0.75))),
+    );
+  }
+}
+
+class _MeanderPainter extends CustomPainter {
+  _MeanderPainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1
+      ..strokeJoin = StrokeJoin.miter;
+    const w = 14.0;
+    final h = size.height - 1;
+    canvas.drawLine(Offset(0, h), Offset(size.width, h), paint);
+    for (var x = 0.0; x + w <= size.width; x += w + 4) {
+      final path = Path()
+        ..moveTo(x, h)
+        ..lineTo(x, 0.5)
+        ..lineTo(x + w, 0.5)
+        ..lineTo(x + w, h * 0.7)
+        ..lineTo(x + w * 0.35, h * 0.7)
+        ..lineTo(x + w * 0.35, h * 0.38)
+        ..lineTo(x + w * 0.7, h * 0.38);
+      canvas.drawPath(path, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_MeanderPainter old) => old.color != color;
+}
+
 class SectionHeader extends StatelessWidget {
   const SectionHeader(this.label, {super.key, this.count});
 
@@ -148,7 +195,7 @@ class TermTopBar extends StatelessWidget {
             ],
           ),
         ),
-        const TermDivider(),
+        const MeanderDivider(),
       ],
     );
   }
@@ -457,9 +504,24 @@ class WireGlobe extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-      size: Size.square(size),
-      painter: _GlobePainter(context.pal.dim),
+    final dim = context.pal.dim;
+    // A esfera guarda o Μ de Mnemosine.
+    return SizedBox.square(
+      dimension: size,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          CustomPaint(size: Size.square(size), painter: _GlobePainter(dim)),
+          Text(
+            'Μ',
+            style: TextStyle(
+              color: dim,
+              fontSize: size * 0.36,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -502,12 +564,19 @@ class CrtOverlay extends StatelessWidget {
     if (level == EffectLevel.off) return const SizedBox.shrink();
     return IgnorePointer(
       child: RepaintBoundary(
-        child: CustomPaint(
-          size: Size.infinite,
-          painter: _CrtPainter(level),
-          // Granulado: uma camada própria, que só é redesenhada se a tela ou o
-          // efeito mudar (ruído fixo: não pisca nem consome bateria).
-          foregroundPainter: level.hasGrain ? const _GrainPainter() : null,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            CustomPaint(
+              size: Size.infinite,
+              painter: _CrtPainter(level),
+              // Granulado: uma camada própria, que só é redesenhada se a tela
+              // ou o efeito mudar (ruído fixo: não pisca nem consome bateria).
+              foregroundPainter: level.hasGrain ? _GrainPainter(warm: level.isAntique) : null,
+            ),
+            if (level.hasTape) const CustomPaint(size: Size.infinite, painter: _TapePainter()),
+            if (level.isAntique) const CustomPaint(size: Size.infinite, painter: _AgedPainter()),
+          ],
         ),
       ),
     );
@@ -522,7 +591,8 @@ class _CrtPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final full = level.strong;
-    final line = Paint()..color = Colors.black.withValues(alpha: full ? 0.22 : 0.12);
+    final line = Paint()
+      ..color = Colors.black.withValues(alpha: full ? 0.22 : (level.isAntique ? 0.06 : 0.12));
     final step = full ? 3.0 : 4.0;
     for (var y = 0.0; y < size.height; y += step) {
       canvas.drawRect(Rect.fromLTWH(0, y, size.width, 1.2), line);
@@ -531,7 +601,7 @@ class _CrtPainter extends CustomPainter {
     final vignette = Paint()
       ..shader = RadialGradient(
         radius: 1.1,
-        colors: [Colors.transparent, Colors.black.withValues(alpha: full ? 0.45 : 0.28)],
+        colors: [Colors.transparent, Colors.black.withValues(alpha: full ? 0.45 : (level.isAntique ? 0.6 : 0.28))],
         stops: const [0.65, 1.0],
       ).createShader(rect);
     canvas.drawRect(rect, vignette);
@@ -545,15 +615,18 @@ class _CrtPainter extends CustomPainter {
 /// (semente constante), em três intensidades. Discreto o bastante para não
 /// atrapalhar a leitura de texto pequeno.
 class _GrainPainter extends CustomPainter {
-  const _GrainPainter();
+  const _GrainPainter({this.warm = false});
+
+  /// true = pontos cor de papel velho (efeito ANTIGO).
+  final bool warm;
 
   @override
   void paint(Canvas canvas, Size size) {
     final rnd = math.Random(20261017);
     final count = (size.width * size.height / 70).round().clamp(0, 12000);
     final tones = <(Color, double)>[
-      (const Color(0x14FFFFFF), 1.3),
-      (const Color(0x0DFFFFFF), 1.8),
+      (warm ? const Color(0x16E6C48A) : const Color(0x14FFFFFF), 1.3),
+      (warm ? const Color(0x0EE6C48A) : const Color(0x0DFFFFFF), 1.8),
       (const Color(0x24000000), 1.5),
     ];
     final buckets = [for (final _ in tones) <Offset>[]];
@@ -571,7 +644,108 @@ class _GrainPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_GrainPainter old) => false;
+  bool shouldRepaint(_GrainPainter old) => old.warm != warm;
+}
+
+/// Fita de vídeo (FITA): faixas claras de rastreamento, riscos horizontais e o
+/// ruído de cabeçote no pé da tela. Tudo parado (semente fixa).
+class _TapePainter extends CustomPainter {
+  const _TapePainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rnd = math.Random(19841984);
+    // Faixas largas e suaves.
+    for (final f in const [0.16, 0.52, 0.81]) {
+      final y = size.height * f;
+      final h = 14 + rnd.nextDouble() * 14;
+      final rect = Rect.fromLTWH(0, y, size.width, h);
+      canvas.drawRect(
+        rect,
+        Paint()
+          ..shader = const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0x00FFFFFF), Color(0x0FFFFFFF), Color(0x00FFFFFF)],
+          ).createShader(rect),
+      );
+    }
+    // Riscos curtos.
+    final streak = Paint()
+      ..color = const Color(0x1AFFFFFF)
+      ..strokeWidth = 1;
+    for (var i = 0; i < 34; i++) {
+      final y = rnd.nextDouble() * size.height;
+      final x = rnd.nextDouble() * size.width;
+      final len = 30 + rnd.nextDouble() * 190;
+      canvas.drawLine(Offset(x, y), Offset(math.min(x + len, size.width), y), streak);
+    }
+    // Ruído de cabeçote no rodapé.
+    final foot = Paint()
+      ..color = const Color(0x24FFFFFF)
+      ..strokeWidth = 1;
+    final top = size.height * 0.955;
+    for (var i = 0; i < 70; i++) {
+      final y = top + rnd.nextDouble() * (size.height - top);
+      final x = rnd.nextDouble() * size.width;
+      final len = 10 + rnd.nextDouble() * 120;
+      canvas.drawLine(Offset(x, y), Offset(math.min(x + len, size.width), y), foot);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_TapePainter old) => false;
+}
+
+/// Papel envelhecido (ANTIGO): véu cor de papiro, manchas, fibras e riscos.
+class _AgedPainter extends CustomPainter {
+  const _AgedPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rnd = math.Random(1453);
+    final rect = Offset.zero & size;
+    canvas.drawRect(rect, Paint()..color = const Color(0x0DC8A064));
+    // Manchas de umidade.
+    for (var i = 0; i < 6; i++) {
+      final c = Offset(rnd.nextDouble() * size.width, rnd.nextDouble() * size.height);
+      final r = 70 + rnd.nextDouble() * 120;
+      canvas.drawCircle(
+        c,
+        r,
+        Paint()
+          ..shader = const RadialGradient(
+            colors: [Color(0x14B48250), Color(0x00B48250)],
+          ).createShader(Rect.fromCircle(center: c, radius: r)),
+      );
+    }
+    // Fibras do papel.
+    final fiber = Paint()
+      ..color = const Color(0x18F0DCB4)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8;
+    for (var i = 0; i < 110; i++) {
+      final x = rnd.nextDouble() * size.width;
+      final y = rnd.nextDouble() * size.height;
+      final a = rnd.nextDouble() * math.pi * 2;
+      final len = 8 + rnd.nextDouble() * 26;
+      final end = Offset(x + math.cos(a) * len, y + math.sin(a) * len);
+      final ctrl = Offset((x + end.dx) / 2 + rnd.nextDouble() * 8 - 4, (y + end.dy) / 2 + rnd.nextDouble() * 8 - 4);
+      canvas.drawPath(Path()..moveTo(x, y)..quadraticBezierTo(ctrl.dx, ctrl.dy, end.dx, end.dy), fiber);
+    }
+    // Riscos verticais de desgaste.
+    final scratch = Paint()
+      ..color = const Color(0x12FFFFFF)
+      ..strokeWidth = 0.8;
+    for (var i = 0; i < 3; i++) {
+      final x = rnd.nextDouble() * size.width;
+      final y = rnd.nextDouble() * size.height * 0.5;
+      canvas.drawLine(Offset(x, y), Offset(x + rnd.nextDouble() * 4 - 2, y + size.height * (0.2 + rnd.nextDouble() * 0.4)), scratch);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_AgedPainter old) => false;
 }
 
 // ------------------------------------------------------------------- campos

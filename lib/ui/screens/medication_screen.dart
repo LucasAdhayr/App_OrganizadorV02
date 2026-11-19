@@ -256,6 +256,71 @@ void _openMedication(BuildContext context, Medication med) {
   );
 }
 
+/// Doses vencidas sem marcação: botões TOMEI / NÃO TOMEI. Aparece em HOJE e em
+/// MEDICAMENTOS. Doses de dias anteriores aparecem como "marcar depois".
+List<Widget> pendingDoseWidgets(BuildContext context) {
+  final s = AppScope.of(context);
+  final p = s.palette;
+  final now = s.now;
+  final m = ScaffoldMessenger.of(context);
+  final list = s.pendingDoses;
+  if (list.isEmpty) return const <Widget>[];
+  final today = list.where((d) => !d.isLate(now)).toList();
+  final late = list.where((d) => d.isLate(now)).toList();
+
+  Widget row(PendingDose d) {
+    final when = d.isLate(now)
+        ? '${weekdayShort(d.at.weekday)} ${two(d.at.day)}/${two(d.at.month)} ${fmtTime(TimeOfDay.fromDateTime(d.at))}'
+        : fmtTime(TimeOfDay.fromDateTime(d.at));
+    return Padding(
+      key: ValueKey('dose-${d.key}'),
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              '${d.med.name}  ·  $when\n${d.med.perDose} ${d.med.perDose == 1 ? 'unidade' : 'unidades'}',
+              style: TextStyle(color: p.fg, fontSize: 14, height: 1.3),
+            ),
+          ),
+          TermButton(
+            label: 'Tomei',
+            icon: Icons.check,
+            dense: true,
+            primary: true,
+            onPressed: () {
+              s.markDose(d.med, d.at, taken: true);
+              toast(m, s.palette, '${d.med.name} marcado como tomado.',
+                  onUndo: () => s.unmarkDose(d.med, d.at));
+            },
+          ),
+          const SizedBox(width: 6),
+          TermButton(
+            label: 'Não tomei',
+            dense: true,
+            onPressed: () {
+              s.markDose(d.med, d.at, taken: false);
+              toast(m, s.palette, 'Anotado: não tomou ${d.med.name}.',
+                  onUndo: () => s.unmarkDose(d.med, d.at));
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  return [
+    if (today.isNotEmpty) ...[
+      SectionHeader('REMÉDIO: HORA DE TOMAR', count: today.length),
+      for (final d in today) row(d),
+    ],
+    if (late.isNotEmpty) ...[
+      SectionHeader('REMÉDIO: MARCAR O QUE PASSOU', count: late.length),
+      for (final d in late) row(d),
+    ],
+  ];
+}
+
 /// MEDICAMENTOS: horários, estoque e o dia em que cada um acaba.
 class MedicationScreen extends StatelessWidget {
   const MedicationScreen({super.key});
@@ -295,6 +360,7 @@ class MedicationScreen extends StatelessWidget {
           : ListView(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
               children: [
+                ...pendingDoseWidgets(context),
                 if (active.isNotEmpty) ...[
                   SectionHeader('TOMANDO', count: active.length),
                   for (final m in active) row(m),

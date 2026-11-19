@@ -7,6 +7,7 @@ import '../../core/labels.dart';
 import '../../core/dates.dart';
 import '../actions.dart';
 import '../sheets.dart';
+import '../calendar_view.dart';
 import '../term_widgets.dart';
 import 'entry_common.dart';
 import 'task_form_screen.dart';
@@ -193,7 +194,44 @@ class ExerciseScreen extends StatelessWidget {
           ],
         ),
       ),
-      body: (list.isEmpty && routines.isEmpty)
+      body: CalendarTabs(
+        calendar: SquareCalendar(
+          legend: 'treinou',
+          countOn: (d) => list.where((e) => sameDay(e.at, d)).length,
+          onDay: (d) {
+            final day = list.where((e) => sameDay(e.at, d)).toList()
+              ..sort((a, b) => a.at.compareTo(b.at));
+            showDaySheet(context, d, [
+              for (final e in day)
+                _DayLine(
+                  title: e.text('kind'),
+                  trailing: e.number('minutes') == null
+                      ? hm(e.at)
+                      : '${e.number('minutes')} min · ${hm(e.at)}',
+                  note: e.text('notes'),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    showEntryActions(
+                      context,
+                      e,
+                      title: e.text('kind'),
+                      top: [
+                        Text('${dayLabel(e.at, now)} ${hm(e.at)}',
+                            style: TextStyle(color: p.dim, fontSize: 13)),
+                        if (e.text('notes').isNotEmpty) ...[
+                          gap(6),
+                          Text(e.text('notes'), style: const TextStyle(fontSize: 14)),
+                        ],
+                      ],
+                      onEdit: () => showExerciseSheet(context, edit: e),
+                      deletedMessage: 'Exercício apagado.',
+                    );
+                  },
+                ),
+            ], empty: 'Nenhum exercício neste dia.');
+          },
+        ),
+        list: (list.isEmpty && routines.isEmpty)
           ? const EmptyHint(
               '> Nenhum exercício ainda.',
               'Crie uma rotina que se repete ou registre um treino feito.',
@@ -255,6 +293,21 @@ class ExerciseScreen extends StatelessWidget {
                 ],
               ],
             ),
+      ),
     );
   }
+}
+
+/// Linha de um registro dentro da ficha do dia.
+class _DayLine extends StatelessWidget {
+  const _DayLine({required this.title, this.trailing, this.note = '', required this.onTap});
+
+  final String title;
+  final String? trailing;
+  final String note;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) =>
+      TermRow(title: title, subtitle: note.isEmpty ? null : note, trailing: trailing, onTap: onTap);
 }

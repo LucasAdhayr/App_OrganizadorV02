@@ -5,6 +5,29 @@ import 'entry.dart';
 
 const String kModMed = 'medicamentos';
 
+/// Quantos dias para trás ainda se pergunta "tomou?".
+const int kDoseLookbackDays = 7;
+
+/// De quantos em quantos minutos o alarme volta a tocar até a dose ser marcada.
+const int kNagMinutes = 10;
+
+/// Identifica uma dose: remédio + dia e hora marcados.
+String doseKey(String medId, DateTime at) =>
+    '$medId|${at.year}-${two(at.month)}-${two(at.day)} ${two(at.hour)}:${two(at.minute)}';
+
+/// Uma dose que ainda não foi marcada como tomada nem como "não tomei".
+class PendingDose {
+  const PendingDose(this.med, this.at);
+
+  final Medication med;
+  final DateTime at;
+
+  String get key => doseKey(med.id, at);
+
+  /// true = o dia já virou: vale como "marcar depois".
+  bool isLate(DateTime now) => dateOnly(at).isBefore(dateOnly(now));
+}
+
 /// Quantos dias ou menos de estoque já merecem um aviso escrito.
 const int kMedLowDays = 7;
 
@@ -97,6 +120,30 @@ class Medication {
     if (isOut(now)) return true;
     final d = daysLeft(now);
     return d != null && d <= kMedLowDays;
+  }
+
+  /// Doses cujo horário já passou e que ninguém marcou ([resolved] = chaves
+  /// de `doseKey` já marcadas). Só olha [kDoseLookbackDays] dias e nunca
+  /// antes do cadastro do remédio.
+  List<PendingDose> pendingDoses(DateTime now, Set<String> resolved) {
+    final out = <PendingDose>[];
+    if (!active) return out;
+    final ts = times;
+    var day = dateOnly(now).subtract(const Duration(days: 0));
+    final first = DateTime(day.year, day.month, day.day - kDoseLookbackDays);
+    final from = dateOnly(entry.createdAt).isAfter(first) ? dateOnly(entry.createdAt) : first;
+    day = from;
+    final last = dateOnly(now);
+    while (!day.isAfter(last)) {
+      for (final t in ts) {
+        final at = DateTime(day.year, day.month, day.day, t.hour, t.minute);
+        if (at.isAfter(entry.createdAt) && !at.isAfter(now) && !resolved.contains(doseKey(id, at))) {
+          out.add(PendingDose(this, at));
+        }
+      }
+      day = DateTime(day.year, day.month, day.day + 1);
+    }
+    return out;
   }
 
   /// Texto do estoque: "12 un. · dura até 20/10 (4 dias)".

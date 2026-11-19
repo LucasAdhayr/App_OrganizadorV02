@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../app/app_state.dart';
+import '../../core/dates.dart';
 import '../../core/entry.dart';
 import '../../core/labels.dart';
 import '../actions.dart';
 import '../sheets.dart';
+import '../calendar_view.dart';
 import '../term_widgets.dart';
 import 'entry_common.dart';
 
@@ -112,7 +114,41 @@ class FoodScreen extends StatelessWidget {
           onPressed: () => showMealSheet(context),
         ),
       ),
-      body: list.isEmpty
+      body: CalendarTabs(
+        calendar: SquareCalendar(
+          legend: 'anotou comida',
+          countOn: (d) => list.where((e) => sameDay(e.at, d)).length,
+          onDay: (d) {
+            final day = list.where((e) => sameDay(e.at, d)).toList()
+              ..sort((a, b) => a.at.compareTo(b.at));
+            showDaySheet(context, d, [
+              for (final e in day)
+                TermRow(
+                  title: firstLine(e.text('text')),
+                  subtitle: _meals[e.text('meal')] ?? 'REFEIÇÃO',
+                  trailing: hm(e.at),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    showEntryActions(
+                      context,
+                      e,
+                      title: _meals[e.text('meal')] ?? 'Refeição',
+                      top: [
+                        SelectableText(e.text('text'),
+                            style: const TextStyle(fontSize: 15, height: 1.4)),
+                        gap(6),
+                        Text('${dayLabel(e.at, now)} ${hm(e.at)}',
+                            style: TextStyle(color: s.palette.dim, fontSize: 12)),
+                      ],
+                      onEdit: () => showMealSheet(context, edit: e),
+                      deletedMessage: 'Refeição apagada.',
+                    );
+                  },
+                ),
+            ], empty: 'Nenhuma refeição neste dia.');
+          },
+        ),
+        list: list.isEmpty
           ? const EmptyHint('> Nada anotado ainda.', 'Registre o que comeu, do seu jeito.')
           : ListView(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
@@ -143,6 +179,7 @@ class FoodScreen extends StatelessWidget {
                 ],
               ],
             ),
+      ),
     );
   }
 }
