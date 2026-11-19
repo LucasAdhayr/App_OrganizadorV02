@@ -201,13 +201,15 @@ void main() {
       ];
       final r = planReminders(tasks, _clock, meds: [_med()]);
       final n = 1 + (kMedDaysAhead - 1) * 2;
-      expect(r.where((x) => x.alarm).length, n);
-      expect(r.length, kMaxReminders + n);
+      final doses = r.where((x) => x.alarm && x.body.startsWith('Hora'));
+      expect(doses.length, n);
+      expect(r.where((x) => !x.alarm).length, kMaxReminders);
     });
 
     test('silêncio vale também para alarmes', () {
       final r = planReminders(const <Task>[], _clock, meds: [_med(times: '03:00')]);
-      expect(r.first.at.hour, 5);
+      expect(r.where((x) => x.body.startsWith('Hora')).first.at.hour, 5);
+      expect(r.every((x) => x.at.hour >= 5), isTrue);
     });
 
     test('tarefa com alarme avisa como alarme; sem, como notificação', () {
