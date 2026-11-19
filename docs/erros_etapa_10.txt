@@ -148,3 +148,41 @@ Windows (desktop) • windows • windows-x64    • Microsoft Windows [versÆo 
 Chrome (web)      • chrome  • web-javascript • Google Chrome 157.0.8103.79
 Edge (web)        • edge    • web-javascript • Microsoft Edge 157.0.4341.57
 If you would like your app to run on web or windows, consider running `flutter create .` to generate projects for these platforms.
+
+______________________________________________________________________________________
+
+00:09 +192: All tests passed!
+PS C:\dev\App_OrganizadorV02> flutter run
+Launching lib\main.dart on M2007J20CG in debug mode...
+WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::load has been called by net.rubygrapefruit.platform.internal.NativeLibraryLoader in an unnamed module (file:/C:/Users/lucas/.gradle/wrapper/dists/gradle-9.3.1-all/9ot9r568e8zfvvd4mn8rbu1j0/gradle-9.3.1/lib/native-platform-0.22-milestone-29.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+Running Gradle task 'assembleDebug'...                            280,4s
+√ Built build\app\outputs\flutter-apk\app-debug.apk
+Installing build\app\outputs\flutter-apk\app-debug.apk...        1.724ms
+Error: ADB exited with exit code 1
+Performing Streamed Install
+
+adb.exe: failed to install C:\dev\App_OrganizadorV02\build\app\outputs\flutter-apk\app-debug.apk:
+Exception occurred while executing 'install':
+android.os.ParcelableException: java.io.IOException: Requested internal only, but not enough space
+        at android.util.ExceptionUtils.wrap(ExceptionUtils.java:34)
+        at com.android.server.pm.PackageInstallerService.createSession(PackageInstallerService.java:590)
+        at com.android.server.pm.PackageManagerShellCommand.doCreateSession(PackageManagerShellCommand.java:3147)
+        at com.android.server.pm.PackageManagerShellCommand.doRunInstall(PackageManagerShellCommand.java:1
+Uninstalling old version...
+Installing build\app\outputs\flutter-apk\app-debug.apk...          928ms
+Error: ADB exited with exit code 1
+Performing Streamed Install
+
+adb.exe: failed to install C:\dev\App_OrganizadorV02\build\app\outputs\flutter-apk\app-debug.apk:
+Exception occurred while executing 'install':
+android.os.ParcelableException: java.io.IOException: Requested internal only, but not enough space
+        at android.util.ExceptionUtils.wrap(ExceptionUtils.java:34)
+        at com.android.server.pm.PackageInstallerService.createSession(PackageInstallerService.java:590)
+        at com.android.server.pm.PackageManagerShellCommand.doCreateSession(PackageManagerShellCommand.java:3147)
+        at com.android.server.pm.PackageManagerShellCommand.doRunInstall(PackageManagerShellCommand.java:1
+Error: Failed to install APK again.
+Error launching application on M2007J20CG.
